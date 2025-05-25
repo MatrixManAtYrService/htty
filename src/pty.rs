@@ -21,6 +21,7 @@ pub fn spawn(
     input_rx: mpsc::Receiver<Vec<u8>>,
     output_tx: mpsc::Sender<Vec<u8>>,
     pid_tx: mpsc::Sender<i32>,
+    exit_code_tx: mpsc::Sender<i32>,
 ) -> Result<impl Future<Output = Result<()>>> {
     let result = unsafe { pty::forkpty(Some(winsize), None) }?;
 
@@ -32,7 +33,7 @@ pub fn spawn(
                 let _ = pid_tx.try_send(pid);
             });
 
-            Ok(drive_child(child, result.master, input_rx, output_tx))
+            Ok(drive_child(child, result.master, input_rx, output_tx, exit_code_tx))
         },
 
         ForkResult::Child => {
@@ -47,6 +48,7 @@ async fn drive_child(
     master: OwnedFd,
     input_rx: mpsc::Receiver<Vec<u8>>,
     output_tx: mpsc::Sender<Vec<u8>>,
+    exit_code_tx: mpsc::Sender<i32>,
 ) -> Result<()> {
     let result = do_drive_child(master, input_rx, output_tx).await;
     eprintln!("sending HUP signal to the child process");
@@ -54,7 +56,19 @@ async fn drive_child(
     eprintln!("waiting for the child process to exit");
 
     tokio::task::spawn_blocking(move || {
-        let _ = wait::waitpid(child, None);
+        match wait::waitpid(child, None) {
+            Ok(wait_status) => {
+                let exit_code = match wait_status {
+                    wait::WaitStatus::Exited(_, code) => code,
+                    wait::WaitStatus::Signaled(_, signal, _) => 128 + signal as i32,
+                    _ => -1,
+                };
+                let _ = exit_code_tx.try_send(exit_code);
+            }
+            Err(_) => {
+                let _ = exit_code_tx.try_send(-1);
+            }
+        }
     })
     .await
     .unwrap();
