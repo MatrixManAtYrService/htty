@@ -20,6 +20,7 @@ tokio-stream = { version = "0.1.15", features = ["sync"] }
 futures-util = "0.3.30"
 rust-embed = "8.4.0"
 mime_guess = "2.0.5"
+tempfile = "3.10"
 
 [profile.release]
 strip = true

@@ -9,12 +9,19 @@ use anyhow::{Context, Result};
 use command::{Command, InputSeq};
 use session::Session;
 use std::net::{SocketAddr, TcpListener};
+use std::path::PathBuf;
+use std::time::Duration;
 use tokio::{sync::mpsc, task::JoinHandle};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     locale::check_utf8_locale()?;
     let cli = cli::Cli::new();
+
+    // Handle waitexit subcommand
+    if let Some(cli::Commands::WaitExit { signal_file }) = &cli.command {
+        return handle_waitexit(signal_file.clone()).await;
+    }
 
     let (input_tx, input_rx) = mpsc::channel(1024);
     let (output_tx, output_rx) = mpsc::channel(1024);
@@ -24,11 +31,29 @@ async fn main() -> Result<()> {
     let (exit_code_tx, exit_code_rx) = mpsc::channel(1);
 
     start_http_api(cli.listen, clients_tx.clone()).await?;
-    let api = start_stdio_api(command_tx, clients_tx, cli.subscribe.unwrap_or_default());
-    let pty = start_pty(cli.command, &cli.size, input_rx, output_tx, pid_tx, exit_code_tx)?;
+    let api = start_stdio_api(command_tx, clients_tx, cli.subscribe.unwrap_or_default(), cli.no_exit, cli.start_on_output);
+    let pty = start_pty(cli.shell_command, &cli.size, input_rx, output_tx, pid_tx, exit_code_tx, cli.no_exit)?;
     let session = build_session(&cli.size);
     run_event_loop(output_rx, input_tx, command_rx, clients_rx, pid_rx, exit_code_rx, session, api).await?;
     pty.await?
+}
+
+async fn handle_waitexit(signal_file: PathBuf) -> Result<()> {
+    eprintln!("waitexit: watching for deletion of {}", signal_file.display());
+    
+    // Simple polling approach using shell command
+    let signal_file_str = signal_file.to_string_lossy();
+    let mut interval = tokio::time::interval(Duration::from_millis(100));
+    
+    loop {
+        interval.tick().await;
+        if !signal_file.exists() {
+            eprintln!("waitexit: signal file deleted, exiting");
+            break;
+        }
+    }
+    
+    Ok(())
 }
 
 fn build_session(size: &cli::Size) -> Session {
@@ -39,8 +64,10 @@ fn start_stdio_api(
     command_tx: mpsc::Sender<Command>,
     clients_tx: mpsc::Sender<session::Client>,
     sub: api::Subscription,
+    no_exit: bool,
+    start_on_output: bool,
 ) -> JoinHandle<Result<()>> {
-    tokio::spawn(api::stdio::start(command_tx, clients_tx, sub))
+    tokio::spawn(api::stdio::start(command_tx, clients_tx, sub, no_exit, start_on_output))
 }
 
 fn start_pty(
@@ -50,12 +77,13 @@ fn start_pty(
     output_tx: mpsc::Sender<Vec<u8>>,
     pid_tx: mpsc::Sender<i32>,
     exit_code_tx: mpsc::Sender<i32>,
+    no_exit: bool,
 ) -> Result<JoinHandle<Result<()>>> {
     let command = command.join(" ");
     eprintln!("launching \"{}\" in terminal of size {}", command, size);
 
     Ok(tokio::spawn(pty::spawn(
-        command, size, input_rx, output_tx, pid_tx, exit_code_tx,
+        command, size, input_rx, output_tx, pid_tx, exit_code_tx, no_exit,
     )?))
 }
 
@@ -138,12 +166,20 @@ async fn run_event_loop(
                         input_tx.send(data).await?;
                     }
 
-                    Some(Command::Snapshot) => {
+                    Some(Command::Snapshot(delay)) => {
+                        if let Some(delay_ms) = delay {
+                            tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+                        }
                         session.snapshot();
                     }
 
                     Some(Command::Resize(cols, rows)) => {
                         session.resize(cols, rows);
+                    }
+
+                    Some(Command::Exit) => {
+                        eprintln!("Exit command received, shutting down...");
+                        break;
                     }
 
                     None => {

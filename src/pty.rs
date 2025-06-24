@@ -5,6 +5,7 @@ use nix::pty;
 use nix::sys::signal::{self, SigHandler, Signal};
 use nix::sys::wait;
 use nix::unistd::{self, ForkResult, Pid};
+use tempfile::NamedTempFile;
 use std::env;
 use std::ffi::{CString, NulError};
 use std::fs::File;
@@ -22,8 +23,16 @@ pub fn spawn(
     output_tx: mpsc::Sender<Vec<u8>>,
     pid_tx: mpsc::Sender<i32>,
     exit_code_tx: mpsc::Sender<i32>,
+    no_exit: bool,
 ) -> Result<impl Future<Output = Result<()>>> {
     let result = unsafe { pty::forkpty(Some(winsize), None) }?;
+
+    // Create signal file if no_exit is enabled
+    let signal_file = if no_exit {
+        Some(NamedTempFile::new()?)
+    } else {
+        None
+    };
 
     match result.fork_result {
         ForkResult::Parent { child } => {
@@ -33,11 +42,12 @@ pub fn spawn(
                 let _ = pid_tx.try_send(pid);
             });
 
-            Ok(drive_child(child, result.master, input_rx, output_tx, exit_code_tx))
+            Ok(drive_child(child, result.master, input_rx, output_tx, exit_code_tx, signal_file))
         },
 
         ForkResult::Child => {
-            exec(command)?;
+            let signal_file_path = signal_file.as_ref().map(|f| f.path().to_string_lossy().to_string());
+            exec(command, no_exit, signal_file_path)?;
             unreachable!();
         }
     }
@@ -49,11 +59,18 @@ async fn drive_child(
     input_rx: mpsc::Receiver<Vec<u8>>,
     output_tx: mpsc::Sender<Vec<u8>>,
     exit_code_tx: mpsc::Sender<i32>,
+    signal_file: Option<NamedTempFile>,
 ) -> Result<()> {
     let result = do_drive_child(master, input_rx, output_tx).await;
     eprintln!("sending HUP signal to the child process");
     unsafe { libc::kill(child.as_raw(), libc::SIGHUP) };
     eprintln!("waiting for the child process to exit");
+
+    // Signal the waitexit process by deleting the signal file
+    if let Some(signal_file) = signal_file {
+        eprintln!("deleting signal file to signal waitexit");
+        drop(signal_file); // This automatically deletes the temp file
+    }
 
     tokio::task::spawn_blocking(move || {
         match wait::waitpid(child, None) {
@@ -161,8 +178,18 @@ async fn do_drive_child(
     }
 }
 
-fn exec(command: String) -> io::Result<()> {
-    let command = ["/bin/sh".to_owned(), "-c".to_owned(), command]
+fn exec(command: String, no_exit: bool, signal_file_path: Option<String>) -> io::Result<()> {
+    let final_command = if let (true, Some(signal_file)) = (no_exit, signal_file_path) {
+        let ht_binary = env::current_exe()
+            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
+            .to_string_lossy()
+            .to_string();
+        format!("{} ; while [ -f '{}' ]; do sleep 0.1; done", command, signal_file)
+    } else {
+        command
+    };
+
+    let command = ["/bin/sh".to_owned(), "-c".to_owned(), final_command]
         .iter()
         .map(|s| CString::new(s.as_bytes()))
         .collect::<Result<Vec<CString>, NulError>>()?;

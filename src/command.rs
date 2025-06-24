@@ -1,8 +1,9 @@
 #[derive(Debug)]
 pub enum Command {
     Input(Vec<InputSeq>),
-    Snapshot,
+    Snapshot(Option<u64>), // Optional delay in milliseconds
     Resize(usize, usize),
+    Exit,
 }
 
 #[derive(Debug, PartialEq)]

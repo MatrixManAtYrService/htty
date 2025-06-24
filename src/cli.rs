@@ -1,20 +1,23 @@
 use crate::api::Subscription;
 use anyhow::bail;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use nix::pty;
-use std::{fmt::Display, net::SocketAddr, ops::Deref, str::FromStr};
+use std::{fmt::Display, net::SocketAddr, ops::Deref, str::FromStr, path::PathBuf};
 
 #[derive(Debug, Parser)]
 #[clap(version, about)]
 #[command(name = "ht")]
 pub struct Cli {
+    #[clap(subcommand)]
+    pub command: Option<Commands>,
+
     /// Terminal size
     #[arg(long, value_name = "COLSxROWS", default_value = Some("120x40"))]
     pub size: Size,
 
     /// Command to run inside the terminal
     #[arg(default_value = "bash")]
-    pub command: Vec<String>,
+    pub shell_command: Vec<String>,
 
     /// Enable HTTP server
     #[arg(short, long, value_name = "LISTEN_ADDR", default_missing_value = "127.0.0.1:0", num_args = 0..=1)]
@@ -27,6 +30,19 @@ pub struct Cli {
     /// Keep terminal session open after subprocess exits (send "Enter" key to fully quit)
     #[arg(long)]
     pub no_exit: bool,
+
+    /// Wait for first output from subprocess before processing commands
+    #[arg(long)]
+    pub start_on_output: bool,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum Commands {
+    /// Wait for a signal file to be deleted before exiting
+    WaitExit {
+        /// Path to the signal file to watch
+        signal_file: PathBuf,
+    },
 }
 
 impl Cli {
