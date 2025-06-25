@@ -1,0 +1,10 @@
+#!/usr/bin/env python3
+"""
+htty command-line interface - synchronous batch mode for scripting
+"""
+
+import sys
+from htty.cli import htty_sync
+
+if __name__ == "__main__":
+    htty_sync()

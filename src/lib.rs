@@ -1,9 +1,10 @@
 /*! 
 # htty - Headless Terminal
 
-A library and binary for headless terminal emulation, with Python bindings.
+A library and binary for headless terminal emulation.
 
-This is a fork of ht with additional features and Python integration.
+This is a fork of ht with additional features. Python integration is provided
+through the `htty` Python package which calls the `ht` binary as a subprocess.
 
 ## Usage as a library
 
@@ -17,8 +18,8 @@ let snapshot = session.snapshot();
 
 ## Python integration
 
-When compiled with the `python` feature, this crate provides Python bindings
-via PyO3 that allow subprocess control and terminal interaction.
+Python integration is provided by the `htty` Python package, which calls the
+`ht` binary as a subprocess for reliable terminal automation.
 */
 
 // Re-export the main modules
@@ -33,17 +34,3 @@ pub mod session;
 // Re-export key types for library users
 pub use command::{Command, InputSeq};
 pub use session::{Event, Session};
-
-// Python bindings (only available with python feature)
-#[cfg(feature = "python")]
-pub mod python;
-
-#[cfg(feature = "python")]
-use pyo3::prelude::*;
-
-/// Python module initialization
-#[cfg(feature = "python")]
-#[pymodule]
-fn _htty(m: &Bound<'_, PyModule>) -> PyResult<()> {
-    python::register_module(m)
-}

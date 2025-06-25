@@ -44,14 +44,13 @@ pkgsWithRust.mkShell {
 
   shellHook = ''
     echo "🚀 htty development environment ready!"
-    echo "📦 To build Python package: uv run maturin develop --features python"
+    echo "📦 To build Python package: uv run maturin develop"
     echo "🧪 To run tests: uv run pytest"
     echo "🔧 Rust binary: cargo build --release"
     
     export HTTY_TEST_VIM_TARGET="${testVim}/bin/vim"
     
     # Set up environment for maturin
-    export PYO3_NO_RECOMPILE=1
     export CARGO_TARGET_DIR="./target"
   '';
 }

@@ -15,31 +15,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple, Union
 
 from . import run, Press
-
-
-def find_ht_binary() -> str:
-    """Find the ht binary to use."""
-    # Try to find bundled binary first
-    try:
-        import importlib.resources as pkg_resources
-        from . import _bundled
-        
-        # Check if we have a bundled ht binary
-        if pkg_resources.is_resource(_bundled, 'ht'):
-            with pkg_resources.path(_bundled, 'ht') as ht_path:
-                if ht_path.exists():
-                    os.chmod(str(ht_path), 0o755)
-                    return str(ht_path)
-    except (ImportError, AttributeError, FileNotFoundError):
-        pass
-    
-    # Fall back to system PATH
-    import shutil
-    ht_path = shutil.which("ht")
-    if ht_path:
-        return ht_path
-    
-    raise RuntimeError("ht binary not found")
+from ._find_ht import find_ht_bin
 
 
 def ht_passthrough() -> None:
@@ -49,7 +25,7 @@ def ht_passthrough() -> None:
     This provides the original async ht interface.
     """
     try:
-        ht_binary = find_ht_binary()
+        ht_binary = find_ht_bin()
         
         # Replace current process with ht binary
         os.execv(ht_binary, [ht_binary] + sys.argv[1:])

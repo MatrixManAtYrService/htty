@@ -35,15 +35,15 @@ rust-embed = "8.4.0"
 mime_guess = "2.0.5"
 tempfile = "3.10"
 
-# Python binding dependencies (optional)
-pyo3 = { version = "0.21", features = ["extension-module"], optional = true }
-which = { version = "4.2", optional = true }
-html-escape = { version = "0.2", optional = true }
-shell-words = { version = "1.1", optional = true }
+# Python binding dependencies (no longer used - we use subprocess approach)
+# pyo3 = { version = "0.21", features = ["extension-module"], optional = true }
+# which = { version = "4.2", optional = true }
+# html-escape = { version = "0.2", optional = true }
+# shell-words = { version = "1.1", optional = true }
 
 [features]
 default = []
-python = ["pyo3", "which", "html-escape", "shell-words"]
+# python = ["pyo3", "which", "html-escape", "shell-words"]  # Removed - using subprocess approach
 
 [profile.release]
 strip = true

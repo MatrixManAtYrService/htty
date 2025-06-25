@@ -1,4 +1,4 @@
-# Build htty Python wheel with bundled ht binary using maturin
+# Build htty Python wheel with ht binary using maturin
 { inputs, pkgs, ... }:
 
 let
@@ -19,26 +19,22 @@ let
   cargoToml = builtins.fromTOML (builtins.readFile ../../Cargo.toml);
   inherit (cargoToml.package) version;
 
-  # Platform-specific wheel tags
-  platformTag = {
-    "x86_64-linux" = "manylinux_2_17_x86_64";
-    "aarch64-linux" = "manylinux_2_17_aarch64";
-    "x86_64-darwin" = "macosx_10_9_x86_64";
-    "aarch64-darwin" = "macosx_11_0_arm64";
-  }.${system} or "any";
-
 in
 pkgsWithRust.stdenv.mkDerivation {
   pname = "htty-wheel";
   inherit version;
   src = ../..;
 
+  cargoDeps = pkgsWithRust.rustPlatform.importCargoLock {
+    lockFile = ../../Cargo.lock;
+  };
+
   nativeBuildInputs = with pkgsWithRust; [
     rustToolchain
     pkg-config
     python3
-    python3.pkgs.pip
     maturin
+    rustPlatform.cargoSetupHook
   ];
 
   buildInputs = with pkgsWithRust; [
@@ -52,11 +48,10 @@ pkgsWithRust.stdenv.mkDerivation {
     runHook preBuild
     
     # Set up environment for maturin
-    export PYO3_NO_RECOMPILE=1
     export CARGO_TARGET_DIR="./target"
     
-    # Build the wheel with Python bindings
-    maturin build --release --features python --out dist/
+    # Build the wheel with binary bindings (no python feature)
+    maturin build --release --out dist/
     
     runHook postBuild
   '';
@@ -80,13 +75,12 @@ pkgsWithRust.stdenv.mkDerivation {
     echo "$WHEEL_FILE" > "$out/wheel-path.txt"
     
     echo "Built wheel package: $WHEEL_NAME"
-    echo "Platform-specific wheel created for: ${system} -> ${platformTag}"
     
     runHook postInstall
   '';
 
   meta = with pkgs.lib; {
-    description = "Headless Terminal - Python wheel with Rust bindings";
+    description = "Headless Terminal - Python wheel with ht binary";
     homepage = "https://github.com/MatrixManAtYrService/ht";
     license = licenses.mit;
     platforms = platforms.unix;
