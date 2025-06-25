@@ -16,7 +16,7 @@ use tokio::{sync::mpsc, task::JoinHandle};
 #[tokio::main]
 async fn main() -> Result<()> {
     locale::check_utf8_locale()?;
-    let cli = cli::Cli::new();
+    let cli = cli::Cli::new()?;
 
     // Handle waitexit subcommand
     if let Some(cli::Commands::WaitExit { signal_file }) = &cli.command {
@@ -32,9 +32,9 @@ async fn main() -> Result<()> {
 
     start_http_api(cli.listen, clients_tx.clone()).await?;
     let api = start_stdio_api(command_tx, clients_tx, cli.subscribe.unwrap_or_default(), cli.no_exit, cli.start_on_output);
-    let pty = start_pty(cli.shell_command, &cli.size, input_rx, output_tx, pid_tx, exit_code_tx, cli.no_exit)?;
+    let pty = start_pty(cli.shell_command.clone(), &cli.size, input_rx, output_tx, pid_tx, exit_code_tx, cli.no_exit)?;
     let session = build_session(&cli.size);
-    run_event_loop(output_rx, input_tx, command_rx, clients_rx, pid_rx, exit_code_rx, session, api).await?;
+    run_event_loop(output_rx, input_tx, command_rx, clients_rx, pid_rx, exit_code_rx, session, api, &cli).await?;
     pty.await?
 }
 
@@ -42,7 +42,6 @@ async fn handle_waitexit(signal_file: PathBuf) -> Result<()> {
     eprintln!("waitexit: watching for deletion of {}", signal_file.display());
     
     // Simple polling approach using shell command
-    let signal_file_str = signal_file.to_string_lossy();
     let mut interval = tokio::time::interval(Duration::from_millis(100));
     
     loop {
@@ -108,8 +107,8 @@ async fn run_event_loop(
     mut exit_code_rx: mpsc::Receiver<i32>,
     mut session: Session,
     mut api_handle: JoinHandle<Result<()>>,
+    cli: &cli::Cli,
 ) -> Result<()> {
-    let cli = cli::Cli::new();
     let mut serving = true;
     let mut process_exited = false;
     let mut wait_for_enter = false;

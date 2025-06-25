@@ -1,0 +1,7 @@
+version = 1
+requires-python = ">=3.8"
+
+[[package]]
+name = "htty"
+version = "0.3.0"
+source = { editable = "." }

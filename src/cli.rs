@@ -1,54 +1,136 @@
 use crate::api::Subscription;
-use anyhow::bail;
-use clap::{Parser, Subcommand};
+use anyhow::{bail, Result};
 use nix::pty;
-use std::{fmt::Display, net::SocketAddr, ops::Deref, str::FromStr, path::PathBuf};
+use std::{fmt::Display, net::SocketAddr, ops::Deref, str::FromStr, path::PathBuf, env};
 
-#[derive(Debug, Parser)]
-#[clap(version, about)]
-#[command(name = "ht")]
+#[derive(Debug)]
 pub struct Cli {
-    #[clap(subcommand)]
     pub command: Option<Commands>,
-
-    /// Terminal size
-    #[arg(long, value_name = "COLSxROWS", default_value = Some("120x40"))]
     pub size: Size,
-
-    /// Command to run inside the terminal
-    #[arg(default_value = "bash")]
     pub shell_command: Vec<String>,
-
-    /// Enable HTTP server
-    #[arg(short, long, value_name = "LISTEN_ADDR", default_missing_value = "127.0.0.1:0", num_args = 0..=1)]
     pub listen: Option<SocketAddr>,
-
-    /// Subscribe to events
-    #[arg(long, value_name = "EVENTS")]
     pub subscribe: Option<Subscription>,
-    
-    /// Keep terminal session open after subprocess exits (send "Enter" key to fully quit)
-    #[arg(long)]
     pub no_exit: bool,
-
-    /// Wait for first output from subprocess before processing commands
-    #[arg(long)]
     pub start_on_output: bool,
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug)]
 pub enum Commands {
-    /// Wait for a signal file to be deleted before exiting
     WaitExit {
-        /// Path to the signal file to watch
         signal_file: PathBuf,
     },
 }
 
 impl Cli {
-    pub fn new() -> Self {
-        Cli::parse()
+    pub fn new() -> Result<Self> {
+        let args: Vec<String> = env::args().collect();
+        parse_args(&args)
     }
+}
+
+fn parse_args(args: &[String]) -> Result<Cli> {
+    let mut cli = Cli {
+        command: None,
+        size: Size::default(),
+        shell_command: vec!["bash".to_string()],
+        listen: None,
+        subscribe: None,
+        no_exit: false,
+        start_on_output: false,
+    };
+
+    let mut i = 1; // Skip program name
+    
+    while i < args.len() {
+        match args[i].as_str() {
+            "--help" | "-h" => {
+                print_help(&args[0]);
+                std::process::exit(0);
+            }
+            "--version" | "-V" => {
+                println!("ht 0.3.0");
+                std::process::exit(0);
+            }
+            "--size" => {
+                if i + 1 >= args.len() {
+                    bail!("--size requires a value");
+                }
+                i += 1;
+                cli.size = args[i].parse()?;
+            }
+            "--listen" | "-l" => {
+                // Handle optional value
+                if i + 1 < args.len() && !args[i + 1].starts_with('-') {
+                    i += 1;
+                    cli.listen = Some(args[i].parse()?);
+                } else {
+                    cli.listen = Some("127.0.0.1:0".parse()?);
+                }
+            }
+            "--subscribe" => {
+                if i + 1 >= args.len() {
+                    bail!("--subscribe requires a value");
+                }
+                i += 1;
+                cli.subscribe = Some(args[i].parse().map_err(|e: String| anyhow::anyhow!(e))?);
+            }
+            "--no-exit" => {
+                cli.no_exit = true;
+            }
+            "--start-on-output" => {
+                cli.start_on_output = true;
+            }
+            "wait-exit" => {
+                if i + 1 >= args.len() {
+                    bail!("wait-exit requires a signal file path");
+                }
+                i += 1;
+                cli.command = Some(Commands::WaitExit {
+                    signal_file: PathBuf::from(&args[i]),
+                });
+                break; // No more parsing after subcommand
+            }
+            "--" => {
+                // Everything after -- is the shell command
+                i += 1;
+                if i < args.len() {
+                    cli.shell_command = args[i..].to_vec();
+                }
+                break;
+            }
+            arg if arg.starts_with('-') => {
+                bail!("Unknown option: {}", arg);
+            }
+            _ => {
+                // Positional arguments are shell command
+                cli.shell_command = args[i..].to_vec();
+                break;
+            }
+        }
+        i += 1;
+    }
+
+    Ok(cli)
+}
+
+fn print_help(program_name: &str) {
+    println!("Usage: {} [OPTIONS] [SHELL_COMMAND]... [COMMAND]", program_name);
+    println!();
+    println!("Commands:");
+    println!("  wait-exit  Wait for a signal file to be deleted before exiting");
+    println!("  help       Print this message or the help of the given subcommand(s)");
+    println!();
+    println!("Arguments:");
+    println!("  [SHELL_COMMAND]...  Command to run inside the terminal [default: bash]");
+    println!();
+    println!("Options:");
+    println!("      --size <COLSxROWS>        Terminal size [default: 120x40]");
+    println!("  -l, --listen [<LISTEN_ADDR>]  Enable HTTP server");
+    println!("      --subscribe <EVENTS>      Subscribe to events");
+    println!("      --no-exit                 Keep terminal session open after subprocess exits");
+    println!("      --start-on-output         Wait for first output from subprocess before processing commands");
+    println!("  -h, --help                    Print help");
+    println!("  -V, --version                 Print version");
 }
 
 #[derive(Debug, Clone)]
@@ -64,10 +146,21 @@ impl Size {
     }
 }
 
+impl Default for Size {
+    fn default() -> Self {
+        Size(pty::Winsize {
+            ws_col: 120,
+            ws_row: 40,
+            ws_xpixel: 0,
+            ws_ypixel: 0,
+        })
+    }
+}
+
 impl FromStr for Size {
     type Err = anyhow::Error;
 
-    fn from_str(s: &str) -> std::prelude::v1::Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.split_once('x') {
             Some((cols, rows)) => {
                 let cols: u16 = cols.parse()?;

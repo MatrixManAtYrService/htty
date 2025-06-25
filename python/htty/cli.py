@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+"""
+CLI interface for htty providing two entry points:
+- ht: passthrough to the underlying ht binary (async mode)  
+- htty: synchronous batch mode for scripting
+"""
+
+import argparse
+import json
+import os
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import List, Optional, Tuple, Union
+
+from . import run, Press
+
+
+def find_ht_binary() -> str:
+    """Find the ht binary to use."""
+    # Try to find bundled binary first
+    try:
+        import importlib.resources as pkg_resources
+        from . import _bundled
+        
+        # Check if we have a bundled ht binary
+        if pkg_resources.is_resource(_bundled, 'ht'):
+            with pkg_resources.path(_bundled, 'ht') as ht_path:
+                if ht_path.exists():
+                    os.chmod(str(ht_path), 0o755)
+                    return str(ht_path)
+    except (ImportError, AttributeError, FileNotFoundError):
+        pass
+    
+    # Fall back to system PATH
+    import shutil
+    ht_path = shutil.which("ht")
+    if ht_path:
+        return ht_path
+    
+    raise RuntimeError("ht binary not found")
+
+
+def ht_passthrough() -> None:
+    """
+    Entry point for 'ht' command - passes through to the ht binary directly.
+    
+    This provides the original async ht interface.
+    """
+    try:
+        ht_binary = find_ht_binary()
+        
+        # Replace current process with ht binary
+        os.execv(ht_binary, [ht_binary] + sys.argv[1:])
+        
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def parse_keys(keys_str: str, delimiter: str = ",") -> List[str]:
+    """Parse a key sequence string into individual keys."""
+    if not keys_str:
+        return []
+    
+    return [key.strip() for key in keys_str.split(delimiter) if key.strip()]
+
+
+def htty_sync() -> None:
+    """
+    Entry point for 'htty' command - synchronous batch mode.
+    
+    Processes a sequence of actions and outputs results.
+    """
+    parser = argparse.ArgumentParser(
+        description="Run a command with ht terminal emulation (synchronous mode)",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  htty -- echo hello
+  htty -k "hello,Enter" -s -- vim
+  htty -r 30 -c 80 -s -k "ihello,Escape" -s -- vim
+
+The -k/--keys and -s/--snapshot options can be used multiple times and will be processed in order.
+        """.strip(),
+    )
+
+    parser.add_argument(
+        "-r", "--rows",
+        type=int,
+        default=20,
+        help="Number of terminal rows (default: 20)",
+    )
+    parser.add_argument(
+        "-c", "--cols", 
+        type=int,
+        default=50,
+        help="Number of terminal columns (default: 50)",
+    )
+    parser.add_argument(
+        "-k", "--keys",
+        action="append",
+        default=[],
+        help="Send keys to the terminal. Can be used multiple times.",
+    )
+    parser.add_argument(
+        "-s", "--snapshot",
+        action="append_const",
+        const=True,
+        default=[],
+        help="Take a snapshot of terminal output. Can be used multiple times.",
+    )
+    parser.add_argument(
+        "-d", "--delimiter",
+        default=",",
+        help="Delimiter for parsing keys (default: ',')",
+    )
+    parser.add_argument(
+        "command",
+        nargs="*",
+        help="Command to run (must be preceded by --)",
+    )
+
+    # Find the -- separator to handle command parsing correctly
+    try:
+        dash_dash_idx = sys.argv.index("--")
+        args_before_command = sys.argv[1:dash_dash_idx]
+        command = sys.argv[dash_dash_idx + 1:]
+    except ValueError:
+        if "--help" in sys.argv or "-h" in sys.argv:
+            args_before_command = sys.argv[1:]
+            command = []
+        else:
+            parser.error("No command specified after --")
+
+    args = parser.parse_args(args_before_command)
+    
+    if not command:
+        if "--help" not in sys.argv and "-h" not in sys.argv:
+            parser.error("No command specified after --")
+        return
+
+    # Build action sequence from arguments
+    actions = []
+    
+    # Simple approach: collect all -k and -s in order they appear
+    arg_iter = iter(args_before_command)
+    for arg in arg_iter:
+        if arg in ["-k", "--keys"]:
+            try:
+                keys_val = next(arg_iter)
+                actions.append(("keys", keys_val))
+            except StopIteration:
+                parser.error(f"{arg} requires a value")
+        elif arg in ["-s", "--snapshot"]:
+            actions.append(("snapshot", None))
+
+    try:
+        # Start the ht process  
+        proc = run(
+            command,
+            rows=args.rows,
+            cols=args.cols,
+            no_exit=True,
+            start_on_output=True
+        )
+        
+        # Small delay to let the process start
+        time.sleep(0.1)
+        
+        # Process actions in order
+        for action_type, action_value in actions:
+            if action_type == "keys" and action_value:
+                keys = parse_keys(action_value, args.delimiter)
+                if keys:
+                    proc.send_keys(keys)
+                    time.sleep(0.05)  # Small delay after sending keys
+            elif action_type == "snapshot":
+                try:
+                    snapshot = proc.snapshot()
+                    # Print each line, stripping trailing whitespace
+                    for line in snapshot.text.split('\n'):
+                        print(line.rstrip())
+                    print("----")  # Separator
+                except Exception as e:
+                    print(f"Error taking snapshot: {e}", file=sys.stderr)
+                    print("----")  # Still print separator
+        
+        # Take a final snapshot if none were explicitly requested
+        if not any(action_type == "snapshot" for action_type, _ in actions):
+            try:
+                snapshot = proc.snapshot()
+                for line in snapshot.text.split('\n'):
+                    print(line.rstrip())
+                print("----")
+            except Exception as e:
+                print(f"Error taking final snapshot: {e}", file=sys.stderr)
+                print("----")
+        
+        # Clean exit
+        try:
+            proc.exit(timeout=5.0)
+        except Exception:
+            # Force cleanup if needed
+            if hasattr(proc, 'subprocess_controller'):
+                try:
+                    proc.subprocess_controller.terminate()
+                except Exception:
+                    pass
+            
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    if sys.argv[0].endswith("htty") or "htty" in sys.argv[0]:
+        htty_sync()
+    else:
+        ht_passthrough()
