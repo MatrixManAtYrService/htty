@@ -22,11 +22,16 @@
 Install from source using Nix (recommended):
 
 ```bash
-# Build the Rust binary
-nix build github:MatrixManAtYrService/ht#htty
+# Both CLI tools without Python environment pollution
+nix build github:MatrixManAtYrService/ht#htty-cli
 
-# Build the Python wheel 
-nix build github:MatrixManAtYrService/ht#htty-wheel
+# Python library environment
+nix build github:MatrixManAtYrService/ht#htty-pylib
+
+# Or for development - individual components:
+nix build github:MatrixManAtYrService/ht#htty        # Rust binary with Python features
+nix build github:MatrixManAtYrService/ht#htty-wheel  # Python wheel
+nix build github:MatrixManAtYrService/ht#htty-test   # Test environment
 ```
 
 Or build from source:
@@ -36,6 +41,42 @@ git clone https://github.com/MatrixManAtYrService/ht
 cd ht
 nix develop  # Sets up development environment
 maturin develop --features python
+```
+
+### Using as a Flake Input
+
+Add to your `flake.nix`:
+
+```nix
+{
+  inputs = {
+    htty.url = "github:MatrixManAtYrService/ht";
+  };
+
+  outputs = { self, nixpkgs, htty }: {
+    devShells.default = pkgs.mkShell {
+      packages = [ 
+        # For CLI usage - both ht and htty commands, zero Python pollution
+        htty.packages.${system}.htty-cli
+        
+        # For Python development - clean Python environment with htty library
+        # htty.packages.${system}.htty-pylib
+      ];
+    };
+  };
+}
+```
+
+### 🎛️ **Command Examples**
+
+```bash
+# htty-cli provides both:
+ht --listen 8080 -- vim              # Rust binary (async mode)
+htty -s -- echo "Hello World"        # Python CLI (sync mode)
+
+# htty-pylib provides:
+python -c "import htty; print('📚')" # Library usage
+python -m htty -s -- echo "Hello"    # CLI via Python module
 ```
 
 ### CLI Usage
@@ -154,21 +195,69 @@ Events are output as JSON:
 
 ## 🔧 Development
 
+## 📦 Nix Flake Outputs
+
+This project provides several Nix packages optimized for different use cases:
+
+### 🎯 **For End Users**
+
+- **`htty-cli`** - **Both CLI tools (`ht` + `htty`)** 
+  - Contains the native Rust `ht` binary (async terminal automation)
+  - Contains the Python `htty` CLI (synchronous batch scripting)
+  - **Zero Python environment pollution** - perfect for devshells
+  - Use when you want both CLI tools without any Python dependency bloat
+
+- **`htty-pylib`** - **Python library environment**
+  - Clean Python environment with `htty` library installed
+  - For Python development and scripting with htty
+  - Includes `python -m htty` CLI access
+  - Use when you need to import htty in Python code
+
+### ⚙️ **For Development & Integration**
+
+- **`htty`** - Full Rust binary with Python features (for project development)
+- **`htty-wheel`** - Python wheel file (for integration with uv2nix and other packaging)
+- **`htty-test`** - Test environment with htty wheel installed (for CI/testing)
+
+### 🔍 **Key Differences: CLI vs PyLib**
+
+| Package | Contains | Python Deps | Use Case |
+|---------|----------|-------------|----------|
+| `htty-cli` | `ht` + `htty` binaries | ❌ None | DevShells, CLI users |
+| `htty-pylib` | Python environment | ✅ Full Python | Python development |
+
+**Why separate packages?** Prevents the infamous Nixpkgs Python setup hook issues that cause environment pollution and version conflicts in mixed-language projects.
+
 ### Building
 
 ```bash
 # Development environment
 nix develop
 
-# Build Rust binary only
-cargo build --release
+# Build individual packages
+nix build .#htty-cli      # CLI only
+nix build .#htty-pylib    # Python library
+nix build .#htty-wheel    # Python wheel
+nix build .#htty-test     # Test environment
 
-# Build Python wheel
-maturin develop --features python
+# Traditional builds
+cargo build --release               # Rust binary only
+maturin develop --features python   # Python wheel
+```
 
-# Run tests
-cargo test
-python -m pytest  # (when available)
+### Testing
+
+```bash
+# Run basic functionality tests
+nix build .#htty-test
+./result/bin/htty-test
+
+# Run pytest in the test environment  
+./result/bin/htty-pytest test_basic.py
+
+# Traditional testing
+cargo test                # Rust tests
+python -m pytest         # Python tests (when available)
 ```
 
 ### Architecture
@@ -178,6 +267,13 @@ htty consists of:
 1. **Enhanced ht binary** (Rust) - Core terminal emulation with reliability improvements
 2. **Python bindings** (PyO3) - Subprocess controller wrapping the ht binary  
 3. **CLI tools** - Both async and sync interfaces
+4. **Nix packaging** - Clean separation between CLI and Python library consumers
+
+The Nix package structure follows best practices:
+- **CLI-only package** prevents Python environment pollution in devshells
+- **Python library package** provides clean Python environment for development
+- **Wheel package** enables integration with uv2nix and other Python packaging tools
+- **Test environment** uses the wheel as input, demonstrating proper separation of concerns
 
 Key improvements over original ht:
 - **`--start-on-output`** - Eliminates race conditions by waiting for subprocess output

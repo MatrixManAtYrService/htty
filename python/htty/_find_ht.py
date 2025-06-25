@@ -38,4 +38,10 @@ def find_ht_bin() -> str:
     if os.path.isfile(target_path):
         return target_path
 
-    raise FileNotFoundError(f"ht binary not found. Searched: {path}")
+    # Fallback: search in PATH (useful for Nix environments and other non-standard setups)
+    import shutil
+    path_ht = shutil.which("ht")
+    if path_ht and os.path.isfile(path_ht):
+        return path_ht
+
+    raise FileNotFoundError(f"ht binary not found. Searched: {path}, {target_path}, PATH")

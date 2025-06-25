@@ -1,0 +1,17 @@
+[project]
+name = "htty-test-env"
+version = "0.1.0"
+description = "Test environment for htty wheel testing - dependency specification only"
+requires-python = ">=3.8"
+
+# Test dependencies only - htty will be provided by htty-pylib
+dependencies = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    # htty is provided separately by htty-pylib input
+]
+
+# No build-system needed since this is just for dependency resolution
+# [build-system]
+# requires = ["hatchling"]
+# build-backend = "hatchling.build"

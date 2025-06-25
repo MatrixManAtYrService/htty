@@ -1,7 +1,11 @@
-# Build htty Python wheel with ht binary using maturin
+# CLI package - provides both 'ht' (Rust binary) and 'htty' (Python CLI)
 { inputs, pkgs, ... }:
 
 let
+  # Get project metadata
+  cargoToml = builtins.fromTOML (builtins.readFile ../../Cargo.toml);
+  inherit (cargoToml.package) version;
+
   # Get overlays for Rust
   overlays = [ inputs.rust-overlay.overlays.default ];
   pkgsWithRust = import inputs.nixpkgs { 
@@ -9,19 +13,17 @@ let
     inherit overlays; 
   };
 
-  inherit (pkgs.stdenv.hostPlatform) system;
-  
   rustToolchain = pkgsWithRust.rust-bin.stable.latest.default.override {
     extensions = [ "rust-src" ];
   };
 
-  # Get project metadata
-  cargoToml = builtins.fromTOML (builtins.readFile ../../Cargo.toml);
-  inherit (cargoToml.package) version;
+  # Get the htty Python library environment (has htty installed)
+  httyPylib = inputs.self.packages.${pkgs.system}.htty-pylib;
 
 in
+# Build ht binary and create wrapper for htty CLI
 pkgsWithRust.stdenv.mkDerivation {
-  pname = "htty-wheel";
+  pname = "htty-cli";
   inherit version;
   src = ../..;
 
@@ -32,8 +34,6 @@ pkgsWithRust.stdenv.mkDerivation {
   nativeBuildInputs = with pkgsWithRust; [
     rustToolchain
     pkg-config
-    python3
-    maturin
     rustPlatform.cargoSetupHook
   ];
 
@@ -47,11 +47,8 @@ pkgsWithRust.stdenv.mkDerivation {
   buildPhase = ''
     runHook preBuild
     
-    # Set up environment for maturin
-    export CARGO_TARGET_DIR="./target"
-    
-    # Build the wheel with binary bindings (no python feature)
-    maturin build --release --out dist/
+    # Build just the CLI binary (no Python bindings)
+    cargo build --release --bin ht
     
     runHook postBuild
   '';
@@ -59,29 +56,26 @@ pkgsWithRust.stdenv.mkDerivation {
   installPhase = ''
     runHook preInstall
     
-    # Create output directory
-    mkdir -p $out
+    # Install the Rust binary
+    mkdir -p $out/bin
+    cp target/release/ht $out/bin/
     
-    # Copy the built wheel
-    cp dist/*.whl $out/
-    
-    # Store wheel metadata for consumers
-    WHEEL_FILE=$(ls $out/*.whl | head -1)
-    WHEEL_NAME=$(basename "$WHEEL_FILE")
-    
-    # Store metadata
-    echo "$WHEEL_NAME" > "$out/wheel-filename.txt"
-    echo "$WHEEL_FILE" > "$out/wheel-path.txt"
-    
-    echo "Built wheel package: $WHEEL_NAME"
+    # Create htty CLI wrapper that uses the Python library environment
+    cat > $out/bin/htty << 'EOF'
+#!/usr/bin/env bash
+# htty CLI - synchronous batch mode for scripting
+exec ${httyPylib}/bin/python -m htty "$@"
+EOF
+    chmod +x $out/bin/htty
     
     runHook postInstall
   '';
 
   meta = with pkgs.lib; {
-    description = "Headless Terminal - Python wheel with ht binary";
+    description = "Headless Terminal - CLI tools (ht + htty)";
     homepage = "https://github.com/MatrixManAtYrService/ht";
     license = licenses.mit;
     platforms = platforms.unix;
+    mainProgram = "htty";
   };
 }
