@@ -29,7 +29,9 @@ classifiers = [
     "Topic :: System :: Shells",
     "Topic :: Terminals",
 ]
-dependencies = []
+dependencies = [
+    "ansi2html",
+]
 
 [project.urls]
 Homepage = "https://github.com/MatrixManAtYrService/ht"

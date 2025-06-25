@@ -11,7 +11,7 @@ let
 
   # Load the test workspace (pytest and other test tools)
   testWorkspace = inputs.uv2nix.lib.workspace.loadWorkspace {
-    workspaceRoot = ../../test-env;
+    workspaceRoot = ../../tests;
   };
 
   # Create python set with just the test dependencies (no htty - we'll get that from htty-pylib)
