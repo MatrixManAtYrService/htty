@@ -76,6 +76,10 @@ pub async fn start(
                         println!("{}", e.to_json().to_string());
                     }
 
+                    Some(Ok(e @ Debug(_, _))) if sub.debug => {
+                        println!("{}", e.to_json().to_string());
+                    }
+
                     Some(_) => (),
 
                     None => break

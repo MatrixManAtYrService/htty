@@ -4,6 +4,8 @@ pub enum Command {
     Snapshot,
     Resize(usize, usize),
     Exit,
+    Debug(String),
+    SignalWaitexit(std::path::PathBuf),
 }
 
 #[derive(Debug, PartialEq)]

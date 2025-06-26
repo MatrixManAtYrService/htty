@@ -4,12 +4,13 @@ use std::str::FromStr;
 
 #[derive(Debug, Default, Copy, Clone)]
 pub struct Subscription {
-    init: bool,
-    snapshot: bool,
-    resize: bool,
-    output: bool,
-    pid: bool,
-    exit_code: bool,
+    pub init: bool,
+    pub snapshot: bool,
+    pub resize: bool,
+    pub output: bool,
+    pub pid: bool,
+    pub exit_code: bool,
+    pub debug: bool,
 }
 
 impl FromStr for Subscription {
@@ -26,6 +27,7 @@ impl FromStr for Subscription {
                 "snapshot" => sub.snapshot = true,
                 "pid" => sub.pid = true,
                 "exitCode" => sub.exit_code = true,
+                "debug" => sub.debug = true,
                 _ => return Err(format!("invalid event name: {event}")),
             }
         }

@@ -7,10 +7,11 @@ mod pty;
 mod session;
 use anyhow::{Context, Result};
 use command::Command;
+use nix::libc;
 use session::Session;
+use std::io::{BufRead, Write};
 use std::net::{SocketAddr, TcpListener};
 use std::path::PathBuf;
-use std::time::Duration;
 use tokio::{sync::mpsc, task::JoinHandle};
 
 #[tokio::main]
@@ -31,24 +32,35 @@ async fn main() -> Result<()> {
     let (exit_code_tx, exit_code_rx) = mpsc::channel(1);
 
     start_http_api(cli.listen, clients_tx.clone()).await?;
-    let api = start_stdio_api(command_tx, clients_tx, cli.subscribe.unwrap_or_default());
-    let pty = start_pty(cli.shell_command.clone(), &cli.size, input_rx, output_tx, pid_tx, exit_code_tx)?;
+    let api = start_stdio_api(command_tx.clone(), clients_tx, cli.subscribe.unwrap_or_default());
+    let pty = start_pty(cli.shell_command.clone(), &cli.size, input_rx, output_tx, pid_tx, exit_code_tx, command_tx.clone())?;
     let session = build_session(&cli.size);
     run_event_loop(output_rx, input_tx, command_rx, clients_rx, pid_rx, exit_code_rx, session, api, &cli).await?;
     pty.await?
 }
 
 async fn handle_waitexit(signal_file: PathBuf) -> Result<()> {
-    eprintln!("waitexit: watching for deletion of {}", signal_file.display());
+    // Create the FIFO (step 3 in desired flow)
+    let fifo_path_str = signal_file.to_string_lossy();
+    let fifo_path_cstr = std::ffi::CString::new(fifo_path_str.as_bytes()).unwrap();
     
-    // Simple polling approach using shell command
-    let mut interval = tokio::time::interval(Duration::from_millis(100));
+    unsafe {
+        let result = libc::mkfifo(fifo_path_cstr.as_ptr(), 0o600);
+        if result != 0 {
+            return Ok(());
+        }
+    }
     
-    loop {
-        interval.tick().await;
-        if !signal_file.exists() {
-            eprintln!("waitexit: signal file deleted, exiting");
-            break;
+    // Block reading from FIFO - this signals to parent that command completed (step 4-5)
+    // Parent will detect FIFO existence and know command is done
+    if let Ok(file) = std::fs::File::open(&signal_file) {
+        let reader = std::io::BufReader::new(file);
+        for line in reader.lines() {
+            if let Ok(line) = line {
+                if line.trim() == "exit" {
+                    break;
+                }
+            }
         }
     }
     
@@ -74,12 +86,13 @@ fn start_pty(
     output_tx: mpsc::Sender<Vec<u8>>,
     pid_tx: mpsc::Sender<i32>,
     exit_code_tx: mpsc::Sender<i32>,
+    command_tx: mpsc::Sender<Command>,
 ) -> Result<JoinHandle<Result<()>>> {
     let command = command.join(" ");
     eprintln!("launching \"{}\" in terminal of size {}", command, size);
 
     Ok(tokio::spawn(pty::spawn(
-        command, size, input_rx, output_tx, pid_tx, exit_code_tx,
+        command, size, input_rx, output_tx, pid_tx, exit_code_tx, command_tx,
     )?))
 }
 
@@ -150,8 +163,36 @@ async fn run_event_loop(
                         session.resize(cols, rows);
                     }
 
+                    Some(Command::Debug(message)) => {
+                        // Emit all debug messages as debug events
+                        session.emit_debug_event(&message);
+                    }
+
+                    Some(Command::SignalWaitexit(fifo_path)) => {
+                        session.emit_debug_event("signalingWaitexit");
+                        
+                        // Write "exit" to FIFO to signal waitexit to complete
+                        if fifo_path.exists() {
+                            if let Ok(mut file) = std::fs::OpenOptions::new()
+                                .write(true)
+                                .open(&fifo_path) 
+                            {
+                                use std::io::Write;
+                                let _ = writeln!(file, "exit");
+                                let _ = file.flush();
+                                session.emit_debug_event("exitSignalSent");
+                            } else {
+                                session.emit_debug_event("exitSignalFailed");
+                            }
+                        } else {
+                            session.emit_debug_event("fifoMissingForExit");
+                        }
+                    }
+
                     Some(Command::Exit) => {
-                        eprintln!("Exit command received, shutting down...");
+                        eprintln!("Exit command received, signaling waitexit and shutting down...");
+                        // Send a special debug event to signal that exit was requested
+                        session.emit_debug_event("exitRequested");
                         break;
                     }
 

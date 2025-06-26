@@ -107,6 +107,8 @@ async fn alis_message(
 
         Ok(ExitCode(_, _)) => None,
 
+        Ok(Debug(_, _)) => None,
+
         Err(e) => Some(Err(axum::Error::new(e))),
     }
 }
@@ -168,6 +170,7 @@ async fn event_stream_message(
         Ok(e @ Snapshot(_, _, _, _)) if sub.snapshot => Some(Ok(json_message(e.to_json()))),
         Ok(e @ Pid(_, _)) if sub.pid => Some(Ok(json_message(e.to_json()))),
         Ok(e @ ExitCode(_, _)) if sub.exit_code => Some(Ok(json_message(e.to_json()))),
+        Ok(e @ Debug(_, _)) if sub.debug => Some(Ok(json_message(e.to_json()))),
         Ok(_) => None,
         Err(e) => Some(Err(axum::Error::new(e))),
     }
