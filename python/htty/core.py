@@ -17,12 +17,27 @@ from .html_utils import simple_ansi_to_html
 from .keys import KeyInput, keys_to_strings
 from ._find_ht import find_ht_bin
 
+# Configure logging for debugging
+def setup_debug_logging():
+    """Set up debug logging if HTTY_DEBUG environment variable is set."""
+    if os.environ.get("HTTY_DEBUG"):
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.DEBUG)
+
+# Set up debug logging on module import
+setup_debug_logging()
+
 __all__ = [
     "SnapshotResult", 
     "SubprocessController", 
     "HTProcess", 
     "run", 
     "ht_process",
+    "get_ht_help",
     "DEFAULT_SLEEP_AFTER_KEYS",
     "DEFAULT_SUBPROCESS_WAIT_TIMEOUT",
     "DEFAULT_SNAPSHOT_TIMEOUT",
@@ -147,7 +162,7 @@ class HTProcess:
     A wrapper around a process started with the 'ht' tool that provides
     methods for interacting with the process and capturing its output.
 
-    This version leverages --start-on-output to avoid race conditions.
+    This version leverages --wait-for-output to avoid race conditions.
     """
 
     def __init__(
@@ -196,14 +211,24 @@ class HTProcess:
         """
         Send keys to the terminal.
         
-        Since we use --start-on-output, this is much more reliable than the original.
+        Since we use --wait-for-output, this is much more reliable than the original.
         """
         key_strings = keys_to_strings(keys)
+        message = json.dumps({"type": "sendKeys", "keys": key_strings})
+        
+        self.logger.info(f"Sending keys to ht process {self.ht_proc.pid}: {message}")
 
         if self.ht_proc.stdin is not None:
-            message = json.dumps({"type": "sendKeys", "keys": key_strings})
-            self.ht_proc.stdin.write(message + "\n")
-            self.ht_proc.stdin.flush()
+            try:
+                self.ht_proc.stdin.write(message + "\n")
+                self.ht_proc.stdin.flush()
+                self.logger.info(f"Keys sent successfully to ht process {self.ht_proc.pid}")
+            except (BrokenPipeError, OSError) as e:
+                self.logger.error(f"Failed to send keys to ht process {self.ht_proc.pid}: {e}")
+                self.logger.error(f"ht process poll result: {self.ht_proc.poll()}")
+                raise
+        else:
+            self.logger.error(f"ht process {self.ht_proc.pid} stdin is None")
         
         time.sleep(DEFAULT_SLEEP_AFTER_KEYS)
 
@@ -214,14 +239,19 @@ class HTProcess:
         if self.ht_proc.poll() is not None:
             raise RuntimeError(f"ht process has exited with code {self.ht_proc.returncode}")
 
+        message = json.dumps({"type": "takeSnapshot"})
+        self.logger.info(f"Taking snapshot from ht process {self.ht_proc.pid}: {message}")
+
         try:
             if self.ht_proc.stdin is not None:
-                message = json.dumps({"type": "takeSnapshot"})
                 self.ht_proc.stdin.write(message + "\n")
                 self.ht_proc.stdin.flush()
+                self.logger.info(f"Snapshot request sent successfully to ht process {self.ht_proc.pid}")
             else:
                 raise RuntimeError("ht process stdin is not available")
         except BrokenPipeError as e:
+            self.logger.error(f"Failed to send snapshot request to ht process {self.ht_proc.pid}: {e}")
+            self.logger.error(f"ht process poll result: {self.ht_proc.poll()}")
             raise RuntimeError(
                 f"Cannot communicate with ht process (broken pipe). "
                 f"Process may have exited. Poll result: {self.ht_proc.poll()}"
@@ -301,12 +331,27 @@ class HTProcess:
                 self.logger.info(f"Subprocess {self.subprocess_controller.pid} already exited")
                 pass  # Process already exited
 
-        # Step 2: Handle ht process exit
+        # Step 2: Send exit command to ht process
+        message = json.dumps({"type": "exit"})
+        self.logger.info(f"Sending exit command to ht process {self.ht_proc.pid}: {message}")
+        
+        try:
+            if self.ht_proc.stdin is not None:
+                self.ht_proc.stdin.write(message + "\n")
+                self.ht_proc.stdin.flush()
+                self.logger.info(f"Exit command sent successfully to ht process {self.ht_proc.pid}")
+                self.ht_proc.stdin.close()  # Close stdin after sending exit command
+                self.logger.info(f"Closed stdin for ht process {self.ht_proc.pid}")
+            else:
+                self.logger.warning(f"ht process {self.ht_proc.pid} stdin is None, cannot send exit command")
+        except (BrokenPipeError, OSError) as e:
+            self.logger.warning(f"Failed to send exit command to ht process {self.ht_proc.pid}: {e} (process may have already exited)")
+            pass
+
+        # Step 2b: Handle no_exit case (if needed)
         if self.no_exit:
             time.sleep(SUBPROCESS_EXIT_DETECTION_DELAY)
-            from .keys import Press
-            self.send_keys([Press.ENTER])
-            time.sleep(DEFAULT_SLEEP_AFTER_KEYS)
+            # Note: We can't send keys after closing stdin, but the exit command should handle this
 
         # Step 3: Wait for the ht process to finish
         start_time = time.time()
@@ -362,6 +407,18 @@ class HTProcess:
 
 
 
+def get_ht_help() -> str:
+    """Get the help output from the ht binary."""
+    ht_binary = find_ht_bin()
+    try:
+        result = subprocess.run([ht_binary, "--help"], capture_output=True, text=True, timeout=10)
+        return result.stdout
+    except subprocess.TimeoutExpired:
+        return "Error: ht --help timed out"
+    except Exception as e:
+        return f"Error getting ht help: {e}"
+
+
 def run(
     command: Union[str, List[str]],
     rows: Optional[int] = None,
@@ -371,7 +428,7 @@ def run(
     """
     Run a command using the 'ht' tool and return a HTProcess object.
     
-    This version uses --start-on-output by default to avoid race conditions.
+    This version uses --wait-for-output by default to avoid race conditions.
     """
     ht_binary = find_ht_bin()
     
@@ -395,18 +452,17 @@ def run(
     if rows is not None and cols is not None:
         ht_cmd_args.extend(["--size", f"{cols}x{rows}"])
 
-    # Add no-exit option if specified
-    if no_exit:
-        ht_cmd_args.append("--no-exit")
-        
-    # Always use --start-on-output to avoid race conditions
-    ht_cmd_args.append("--start-on-output")
+    # Note: --no-exit and --wait-for-output options are not supported in this version
+    # They've been removed from this implementation
 
     # Add separator and the command to run
     ht_cmd_args.append("--")
     ht_cmd_args.extend(cmd_args)
 
-    # Launch ht
+    # Launch ht with debug logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Launching ht command: {' '.join(ht_cmd_args)}")
+    
     ht_proc = subprocess.Popen(
         ht_cmd_args,
         stdin=subprocess.PIPE,
@@ -415,6 +471,8 @@ def run(
         text=True,
         bufsize=1,
     )
+    
+    logger.info(f"ht process started with PID: {ht_proc.pid}")
 
     # Create a reader thread to capture ht output
     def reader_thread(
@@ -422,31 +480,48 @@ def run(
         queue_obj: queue.Queue,
         ht_process: HTProcess,
     ) -> None:
+        logger = logging.getLogger(__name__)
+        logger.info(f"Reader thread started for ht process {ht_proc.pid}")
+        
         while True:
             if ht_proc.stdout is None:
+                logger.warning(f"ht process {ht_proc.pid} stdout is None, exiting reader thread")
                 break
+                
             line = ht_proc.stdout.readline()
             if not line:
+                logger.info(f"ht process {ht_proc.pid} stdout closed, exiting reader thread")
                 break
+                
             line = line.strip()
             if not line:
                 continue
 
+            logger.debug(f"ht process {ht_proc.pid} stdout: {line}")
+
             try:
                 event = json.loads(line)
+                logger.info(f"ht process {ht_proc.pid} event: {event}")
                 queue_obj.put(event)
 
                 if event["type"] == "output":
                     ht_process.output_events.append(event)
                 elif event["type"] == "exitCode":
+                    logger.info(f"ht process {ht_proc.pid} subprocess exited with code: {event.get('data', {}).get('exitCode')}")
                     ht_process.subprocess_exited = True
                     if hasattr(ht_process, "subprocess_controller"):
                         exit_code = event.get("data", {}).get("exitCode")
                         if exit_code is not None:
                             ht_process.subprocess_controller.exit_code = exit_code
-            except json.JSONDecodeError:
-                # Skip non-JSON lines
+                elif event["type"] == "pid":
+                    logger.info(f"ht process {ht_proc.pid} subprocess PID: {event.get('data', {}).get('pid')}")
+                elif event["type"] == "debug":
+                    logger.info(f"ht process {ht_proc.pid} debug: {event.get('data', {})}")
+            except json.JSONDecodeError as e:
+                logger.warning(f"ht process {ht_proc.pid} non-JSON output: {line} (error: {e})")
                 pass
+                
+        logger.info(f"Reader thread exiting for ht process {ht_proc.pid}")
 
     # Create an HTProcess instance
     process = HTProcess(
@@ -458,9 +533,33 @@ def run(
         no_exit=no_exit,
     )
 
-    # Start the reader thread
-    thread = threading.Thread(target=reader_thread, args=(ht_proc, event_queue, process), daemon=True)
-    thread.start()
+    # Start the reader thread for stdout
+    stdout_thread = threading.Thread(target=reader_thread, args=(ht_proc, event_queue, process), daemon=True)
+    stdout_thread.start()
+    
+    # Start a stderr reader thread
+    def stderr_reader_thread(ht_proc: subprocess.Popen) -> None:
+        logger = logging.getLogger(__name__)
+        logger.info(f"Stderr reader thread started for ht process {ht_proc.pid}")
+        
+        while True:
+            if ht_proc.stderr is None:
+                logger.warning(f"ht process {ht_proc.pid} stderr is None, exiting stderr reader thread")
+                break
+                
+            line = ht_proc.stderr.readline()
+            if not line:
+                logger.info(f"ht process {ht_proc.pid} stderr closed, exiting stderr reader thread")
+                break
+                
+            line = line.strip()
+            if line:
+                logger.error(f"ht process {ht_proc.pid} stderr: {line}")
+                
+        logger.info(f"Stderr reader thread exiting for ht process {ht_proc.pid}")
+    
+    stderr_thread = threading.Thread(target=stderr_reader_thread, args=(ht_proc,), daemon=True)
+    stderr_thread.start()
     
     # Wait briefly for the process to initialize and get PID
     start_time = time.time()

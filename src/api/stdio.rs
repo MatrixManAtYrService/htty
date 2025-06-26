@@ -28,13 +28,10 @@ pub async fn start(
     command_tx: mpsc::Sender<Command>,
     clients_tx: mpsc::Sender<session::Client>,
     sub: Subscription,
-    wait_for_output: bool,
 ) -> Result<()> {
     let (input_tx, mut input_rx) = mpsc::unbounded_channel();
     thread::spawn(|| read_stdin(input_tx));
     let mut events = session::stream(&clients_tx).await?;
-    let mut start_processing = false;
-    let mut queued_commands = Vec::new();
 
     loop {
         tokio::select! {
@@ -42,21 +39,12 @@ pub async fn start(
                 match line {
                     Some(line) => {
                         match parse_line(&line) {
-                            Ok(command) => {
-                                if start_processing {
-                                    command_tx.send(command).await?;
-                                } else {
-                                    queued_commands.push(command);
-                                }
-                            },
+                            Ok(command) => command_tx.send(command).await?,
                             Err(e) => eprintln!("command parse error: {e}"),
                         }
                     }
 
-                    None => {
-                        // stdin closed - continue running instead of breaking
-                        // Users can still send exit command or use Ctrl+C
-                    }
+                    None => break
                 }
             }
 
@@ -70,14 +58,6 @@ pub async fn start(
 
                     Some(Ok(e @ Output(_, _))) if sub.output => {
                         println!("{}", e.to_json().to_string());
-                        
-                        // If waiting for output and this is the first output, start processing
-                        if wait_for_output && !start_processing {
-                            start_processing = true;
-                            for command in queued_commands.drain(..) {
-                                command_tx.send(command).await?;
-                            }
-                        }
                     }
 
                     Some(Ok(e @ Resize(_, _, _))) if sub.resize => {
@@ -90,14 +70,6 @@ pub async fn start(
 
                     Some(Ok(e @ Pid(_, _))) if sub.pid => {
                         println!("{}", e.to_json().to_string());
-                        
-                        // If not waiting for output and this is the first pid, start processing
-                        if !wait_for_output && !start_processing {
-                            start_processing = true;
-                            for command in queued_commands.drain(..) {
-                                command_tx.send(command).await?;
-                            }
-                        }
                     }
 
                     Some(Ok(e @ ExitCode(_, _))) if sub.exit_code => {

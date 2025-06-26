@@ -13,6 +13,7 @@ from .core import (
     SubprocessController,
     run,
     ht_process,
+    get_ht_help,
 )
 from .keys import (
     Press,
@@ -29,6 +30,7 @@ __all__ = [
     "KeyInput",
     "run",
     "ht_process",
+    "get_ht_help",
     "find_ht_bin",
     "SubprocessController",
     "key_to_string",
