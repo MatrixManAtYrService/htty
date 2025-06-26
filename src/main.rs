@@ -32,7 +32,15 @@ async fn main() -> Result<()> {
     let (exit_code_tx, exit_code_rx) = mpsc::channel(1);
 
     start_http_api(cli.listen, clients_tx.clone()).await?;
-    let api = start_stdio_api(command_tx.clone(), clients_tx, cli.subscribe.unwrap_or_default());
+    
+    // Ensure required subscriptions are present
+    let mut subscription = cli.subscribe.unwrap_or_default();
+    subscription.pid = true; // Always subscribe to pid since it's our default trigger
+    if cli.wait_for_output {
+        subscription.output = true; // Subscribe to output when --wait-for-output is used
+    }
+    
+    let api = start_stdio_api(command_tx.clone(), clients_tx, subscription, cli.wait_for_output);
     let pty = start_pty(cli.shell_command.clone(), &cli.size, input_rx, output_tx, pid_tx, exit_code_tx, command_tx.clone())?;
     let session = build_session(&cli.size);
     run_event_loop(output_rx, input_tx, command_rx, clients_rx, pid_rx, exit_code_rx, session, api, &cli).await?;
@@ -75,8 +83,9 @@ fn start_stdio_api(
     command_tx: mpsc::Sender<Command>,
     clients_tx: mpsc::Sender<session::Client>,
     sub: api::Subscription,
+    wait_for_output: bool,
 ) -> JoinHandle<Result<()>> {
-    tokio::spawn(api::stdio::start(command_tx, clients_tx, sub))
+    tokio::spawn(api::stdio::start(command_tx, clients_tx, sub, wait_for_output))
 }
 
 fn start_pty(
@@ -213,11 +222,6 @@ async fn run_event_loop(
                         serving = false;
                     }
                 }
-            }
-
-            _ = &mut api_handle => {
-                eprintln!("API handle closed, shutting down...");
-                break;
             }
         }
     }
