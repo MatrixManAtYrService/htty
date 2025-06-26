@@ -6,7 +6,7 @@ mod nbio;
 mod pty;
 mod session;
 use anyhow::{Context, Result};
-use command::{Command, InputSeq};
+use command::Command;
 use session::Session;
 use std::net::{SocketAddr, TcpListener};
 use std::path::PathBuf;
@@ -31,8 +31,8 @@ async fn main() -> Result<()> {
     let (exit_code_tx, exit_code_rx) = mpsc::channel(1);
 
     start_http_api(cli.listen, clients_tx.clone()).await?;
-    let api = start_stdio_api(command_tx, clients_tx, cli.subscribe.unwrap_or_default(), cli.no_exit, cli.start_on_output);
-    let pty = start_pty(cli.shell_command.clone(), &cli.size, input_rx, output_tx, pid_tx, exit_code_tx, cli.no_exit)?;
+    let api = start_stdio_api(command_tx, clients_tx, cli.subscribe.unwrap_or_default());
+    let pty = start_pty(cli.shell_command.clone(), &cli.size, input_rx, output_tx, pid_tx, exit_code_tx)?;
     let session = build_session(&cli.size);
     run_event_loop(output_rx, input_tx, command_rx, clients_rx, pid_rx, exit_code_rx, session, api, &cli).await?;
     pty.await?
@@ -63,10 +63,8 @@ fn start_stdio_api(
     command_tx: mpsc::Sender<Command>,
     clients_tx: mpsc::Sender<session::Client>,
     sub: api::Subscription,
-    no_exit: bool,
-    start_on_output: bool,
 ) -> JoinHandle<Result<()>> {
-    tokio::spawn(api::stdio::start(command_tx, clients_tx, sub, no_exit, start_on_output))
+    tokio::spawn(api::stdio::start(command_tx, clients_tx, sub))
 }
 
 fn start_pty(
@@ -76,13 +74,12 @@ fn start_pty(
     output_tx: mpsc::Sender<Vec<u8>>,
     pid_tx: mpsc::Sender<i32>,
     exit_code_tx: mpsc::Sender<i32>,
-    no_exit: bool,
 ) -> Result<JoinHandle<Result<()>>> {
     let command = command.join(" ");
     eprintln!("launching \"{}\" in terminal of size {}", command, size);
 
     Ok(tokio::spawn(pty::spawn(
-        command, size, input_rx, output_tx, pid_tx, exit_code_tx, no_exit,
+        command, size, input_rx, output_tx, pid_tx, exit_code_tx,
     )?))
 }
 
@@ -107,11 +104,9 @@ async fn run_event_loop(
     mut exit_code_rx: mpsc::Receiver<i32>,
     mut session: Session,
     mut api_handle: JoinHandle<Result<()>>,
-    cli: &cli::Cli,
+    _cli: &cli::Cli,
 ) -> Result<()> {
     let mut serving = true;
-    let mut process_exited = false;
-    let mut wait_for_enter = false;
 
     loop {
         tokio::select! {
@@ -122,14 +117,8 @@ async fn run_event_loop(
                     },
 
                     None => {
-                        if !process_exited && cli.no_exit {
-                            eprintln!("Process exited. Send {{\"type\": \"sendKeys\", \"keys\": [\"Enter\"]}} to exit...");
-                            process_exited = true;
-                            wait_for_enter = true;
-                        } else if !cli.no_exit {
-                            eprintln!("Process exited, shutting down...");
-                            break;
-                        }
+                        eprintln!("Process exited, shutting down...");
+                        break;
                     }
                 }
             }
@@ -149,26 +138,11 @@ async fn run_event_loop(
             command = command_rx.recv() => {
                 match command {
                     Some(Command::Input(seqs)) => {
-                        if wait_for_enter {
-                            // Check if Enter was pressed
-                            for seq in &seqs {
-                                if let InputSeq::Standard(key) = seq {
-                                    if key == "\r" || key == "\n" {
-                                        eprintln!("Enter command received, shutting down...");
-                                        return Ok(());
-                                    }
-                                }
-                            }
-                        }
-                        
                         let data = command::seqs_to_bytes(&seqs, session.cursor_key_app_mode());
                         input_tx.send(data).await?;
                     }
 
-                    Some(Command::Snapshot(delay)) => {
-                        if let Some(delay_ms) = delay {
-                            tokio::time::sleep(Duration::from_millis(delay_ms)).await;
-                        }
+                    Some(Command::Snapshot) => {
                         session.snapshot();
                     }
 
@@ -182,10 +156,8 @@ async fn run_event_loop(
                     }
 
                     None => {
-                        if !process_exited {
-                            eprintln!("stdin closed, shutting down...");
-                            break;
-                        }
+                        eprintln!("stdin closed, shutting down...");
+                        break;
                     }
                 }
             }
@@ -203,10 +175,8 @@ async fn run_event_loop(
             }
 
             _ = &mut api_handle => {
-                if !process_exited {
-                    eprintln!("API handle closed, shutting down...");
-                    break;
-                }
+                eprintln!("API handle closed, shutting down...");
+                break;
             }
         }
     }

@@ -23,16 +23,11 @@ pub fn spawn(
     output_tx: mpsc::Sender<Vec<u8>>,
     pid_tx: mpsc::Sender<i32>,
     exit_code_tx: mpsc::Sender<i32>,
-    no_exit: bool,
 ) -> Result<impl Future<Output = Result<()>>> {
     let result = unsafe { pty::forkpty(Some(winsize), None) }?;
 
-    // Create signal file if no_exit is enabled
-    let signal_file = if no_exit {
-        Some(NamedTempFile::new()?)
-    } else {
-        None
-    };
+    // Always create signal file (since we always use wait-exit approach)
+    let signal_file = NamedTempFile::new()?;
 
     match result.fork_result {
         ForkResult::Parent { child } => {
@@ -42,12 +37,12 @@ pub fn spawn(
                 let _ = pid_tx.try_send(pid);
             });
 
-            Ok(drive_child(child, result.master, input_rx, output_tx, exit_code_tx, signal_file))
+            Ok(drive_child(child, result.master, input_rx, output_tx, exit_code_tx, Some(signal_file)))
         },
 
         ForkResult::Child => {
-            let signal_file_path = signal_file.as_ref().map(|f| f.path().to_string_lossy().to_string());
-            exec(command, no_exit, signal_file_path)?;
+            let signal_file_path = signal_file.path().to_string_lossy().to_string();
+            exec(command, signal_file_path)?;
             unreachable!();
         }
     }
@@ -178,16 +173,13 @@ async fn do_drive_child(
     }
 }
 
-fn exec(command: String, no_exit: bool, signal_file_path: Option<String>) -> io::Result<()> {
-    let final_command = if let (true, Some(signal_file)) = (no_exit, signal_file_path) {
-        let ht_binary = env::current_exe()
-            .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
-            .to_string_lossy()
-            .to_string();
-        format!("{} ; while [ -f '{}' ]; do sleep 0.1; done", command, signal_file)
-    } else {
-        command
-    };
+fn exec(command: String, signal_file_path: String) -> io::Result<()> {
+    let ht_binary = env::current_exe()
+        .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?
+        .to_string_lossy()
+        .to_string();
+    
+    let final_command = format!("{} ; {} wait-exit {}", command, ht_binary, signal_file_path);
 
     let command = ["/bin/sh".to_owned(), "-c".to_owned(), final_command]
         .iter()

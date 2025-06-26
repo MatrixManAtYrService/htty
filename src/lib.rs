@@ -12,8 +12,13 @@ through the `htty` Python package which calls the `ht` binary as a subprocess.
 use htty::{Command, Session, InputSeq};
 
 let mut session = Session::new(80, 24);
-session.send_input(vec![InputSeq::Text("hello".to_string())]);
-let snapshot = session.snapshot();
+// Simulate terminal output
+session.output("hello\n".to_string());
+// Take a snapshot of the current terminal state
+session.snapshot();
+
+// Create input commands (these would be sent through the command system)
+let _input_command = Command::Input(vec![InputSeq::Standard("hello".to_string())]);
 ```
 
 ## Python integration

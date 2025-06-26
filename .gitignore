@@ -3,3 +3,4 @@
 .envrc
 __pycache__/
 *.py[cod]
+result

@@ -10,8 +10,6 @@ pub struct Cli {
     pub shell_command: Vec<String>,
     pub listen: Option<SocketAddr>,
     pub subscribe: Option<Subscription>,
-    pub no_exit: bool,
-    pub start_on_output: bool,
 }
 
 #[derive(Debug)]
@@ -35,8 +33,6 @@ fn parse_args(args: &[String]) -> Result<Cli> {
         shell_command: vec!["bash".to_string()],
         listen: None,
         subscribe: None,
-        no_exit: false,
-        start_on_output: false,
     };
 
     let mut i = 1; // Skip program name
@@ -73,12 +69,6 @@ fn parse_args(args: &[String]) -> Result<Cli> {
                 }
                 i += 1;
                 cli.subscribe = Some(args[i].parse().map_err(|e: String| anyhow::anyhow!(e))?);
-            }
-            "--no-exit" => {
-                cli.no_exit = true;
-            }
-            "--start-on-output" => {
-                cli.start_on_output = true;
             }
             "wait-exit" => {
                 if i + 1 >= args.len() {
@@ -127,8 +117,6 @@ fn print_help(program_name: &str) {
     println!("      --size <COLSxROWS>        Terminal size [default: 120x40]");
     println!("  -l, --listen [<LISTEN_ADDR>]  Enable HTTP server");
     println!("      --subscribe <EVENTS>      Subscribe to events");
-    println!("      --no-exit                 Keep terminal session open after subprocess exits");
-    println!("      --start-on-output         Wait for first output from subprocess before processing commands");
     println!("  -h, --help                    Print help");
     println!("  -V, --version                 Print version");
 }

@@ -24,49 +24,27 @@ struct ResizeArgs {
     rows: usize,
 }
 
-#[derive(Debug, Deserialize)]
-struct SnapshotArgs {
-    #[serde(default)]
-    delay: Option<u64>, // delay in milliseconds
-}
-
 pub async fn start(
     command_tx: mpsc::Sender<Command>,
     clients_tx: mpsc::Sender<session::Client>,
     sub: Subscription,
-    no_exit: bool,
-    start_on_output: bool,
 ) -> Result<()> {
     let (input_tx, mut input_rx) = mpsc::unbounded_channel();
     thread::spawn(|| read_stdin(input_tx));
     let mut events = session::stream(&clients_tx).await?;
-    let mut stdin_closed = false;
-    let mut output_received = !start_on_output; // If not waiting for output, start immediately
-    let mut queued_commands = Vec::new();
 
     loop {
         tokio::select! {
-            line = input_rx.recv(), if !stdin_closed => {
+            line = input_rx.recv() => {
                 match line {
                     Some(line) => {
                         match parse_line(&line) {
-                            Ok(command) => {
-                                if output_received {
-                                    command_tx.send(command).await?;
-                                } else {
-                                    queued_commands.push(command);
-                                }
-                            },
+                            Ok(command) => command_tx.send(command).await?,
                             Err(e) => eprintln!("command parse error: {e}"),
                         }
                     }
 
-                    None => {
-                        stdin_closed = true;
-                        if !no_exit {
-                            break;
-                        }
-                    }
+                    None => break
                 }
             }
 
@@ -80,14 +58,6 @@ pub async fn start(
 
                     Some(Ok(e @ Output(_, _))) if sub.output => {
                         println!("{}", e.to_json().to_string());
-                        
-                        // If this is the first output and we were waiting for it, process queued commands
-                        if !output_received {
-                            output_received = true;
-                            for command in queued_commands.drain(..) {
-                                command_tx.send(command).await?;
-                            }
-                        }
                     }
 
                     Some(Ok(e @ Resize(_, _, _))) if sub.resize => {
@@ -149,14 +119,7 @@ fn build_command(value: serde_json::Value) -> Result<Command, String> {
             Ok(Command::Resize(args.cols, args.rows))
         }
 
-        Some("takeSnapshot") => {
-            if value.get("delay").is_some() {
-                let args: SnapshotArgs = args_from_json_value(value)?;
-                Ok(Command::Snapshot(args.delay))
-            } else {
-                Ok(Command::Snapshot(None))
-            }
-        },
+        Some("takeSnapshot") => Ok(Command::Snapshot),
 
         Some("exit") => Ok(Command::Exit),
 
@@ -527,13 +490,7 @@ mod test {
     #[test]
     fn parse_take_snapshot() {
         let command = parse_line(r#"{ "type": "takeSnapshot" }"#).unwrap();
-        assert!(matches!(command, Command::Snapshot(None)));
-    }
-
-    #[test]
-    fn parse_take_snapshot_with_delay() {
-        let command = parse_line(r#"{ "type": "takeSnapshot", "delay": 500 }"#).unwrap();
-        assert!(matches!(command, Command::Snapshot(Some(500))));
+        assert!(matches!(command, Command::Snapshot));
     }
 
     #[test]
