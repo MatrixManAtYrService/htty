@@ -15,3 +15,11 @@ dependencies = [
 # [build-system]
 # requires = ["hatchling"]
 # build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+python_files = "test_*.py"
+log_cli = true
+log_cli_level = "DEBUG"
+log_cli_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+log_level = "DEBUG"

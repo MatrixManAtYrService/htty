@@ -58,10 +58,6 @@ dev = [
     "ruff>=0.12.0",
 ]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = "test_*.py"
-
 [tool.ruff]
 line-length = 120
 
