@@ -6,6 +6,7 @@ pub enum Command {
     Exit,
     Debug(String),
     SignalWaitexit(std::path::PathBuf),
+    CommandCompleted(std::path::PathBuf),
 }
 
 #[derive(Debug, PartialEq)]

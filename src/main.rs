@@ -120,6 +120,11 @@ async fn run_event_loop(
     _cli: &cli::Cli,
 ) -> Result<()> {
     let mut serving = true;
+    let mut last_command_time = std::time::Instant::now();
+    let mut pending_waitexit: Option<std::path::PathBuf> = None;
+
+    // Timer for checking command channel emptiness
+    let mut emptiness_check_interval = tokio::time::interval(std::time::Duration::from_millis(10));
 
     loop {
         tokio::select! {
@@ -148,7 +153,39 @@ async fn run_event_loop(
                 }
             }
 
+            _ = emptiness_check_interval.tick() => {
+                // Check if we should signal waitexit due to channel emptiness
+                if let Some(fifo_path) = &pending_waitexit {
+                    let emptiness_duration = last_command_time.elapsed();
+                    if emptiness_duration >= std::time::Duration::from_millis(200) {
+                        // Channel has been empty for 200ms, signal waitexit
+                        session.emit_debug_event("signalingWaitexit");
+                        
+                        if fifo_path.exists() {
+                            if let Ok(mut file) = std::fs::OpenOptions::new()
+                                .write(true)
+                                .open(fifo_path) 
+                            {
+                                use std::io::Write;
+                                let _ = writeln!(file, "exit");
+                                let _ = file.flush();
+                                session.emit_debug_event("exitSignalSent");
+                            } else {
+                                session.emit_debug_event("exitSignalFailed");
+                            }
+                        } else {
+                            session.emit_debug_event("fifoMissingForExit");
+                        }
+                        
+                        pending_waitexit = None; // Clear pending state
+                    }
+                }
+            }
+
             command = command_rx.recv() => {
+                // Update last command time whenever we receive any command
+                last_command_time = std::time::Instant::now();
+                
                 match command {
                     Some(Command::Input(seqs)) => {
                         let data = command::seqs_to_bytes(&seqs, session.cursor_key_app_mode());
@@ -168,7 +205,15 @@ async fn run_event_loop(
                         session.emit_debug_event(&message);
                     }
 
+                    Some(Command::CommandCompleted(fifo_path)) => {
+                        session.emit_command_completed();
+                        // Set up pending waitexit - it will be triggered when channel is empty for 200ms
+                        pending_waitexit = Some(fifo_path);
+                        session.emit_debug_event("commandCompletedReceived");
+                    }
+
                     Some(Command::SignalWaitexit(fifo_path)) => {
+                        // This is the old direct signaling - we'll keep it for now but it shouldn't be used
                         session.emit_debug_event("signalingWaitexit");
                         
                         // Write "exit" to FIFO to signal waitexit to complete

@@ -96,7 +96,7 @@ def test_hello_world_with_scrolling(hello_world_script: str, test_logger) -> Non
 
 def test_hello_world_after_exit(hello_world_script: str, test_logger) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
-    ht = run(cmd, rows=6, cols=8, extra_subscribes=["debug"], logger=test_logger)
+    ht = run(cmd, rows=6, cols=8, logger=test_logger)
     ht.send_keys(Press.ENTER)
     ht.send_keys(Press.ENTER)
     ht.subprocess_controller.wait()

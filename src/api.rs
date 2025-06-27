@@ -11,6 +11,7 @@ pub struct Subscription {
     pub pid: bool,
     pub exit_code: bool,
     pub debug: bool,
+    pub command_completed: bool,
 }
 
 impl FromStr for Subscription {
@@ -28,6 +29,7 @@ impl FromStr for Subscription {
                 "pid" => sub.pid = true,
                 "exitCode" => sub.exit_code = true,
                 "debug" => sub.debug = true,
+                "commandCompleted" => sub.command_completed = true,
                 _ => return Err(format!("invalid event name: {event}")),
             }
         }

@@ -81,14 +81,14 @@ async fn drive_child(
             
             // Check if FIFO exists (indicates command completed and waitexit is blocking)
             if fifo_path_clone.exists() {
-                let _ = fifo_command_tx.try_send(Command::Debug("commandCompleted".to_string()));
+                let _ = fifo_command_tx.try_send(Command::CommandCompleted(fifo_path_clone.clone()));
                 break; // Exit monitoring once FIFO is detected
             }
         }
     });
 
     // Process the main command and capture its output
-    let result = do_drive_child(master, input_rx, output_tx).await;
+    let result = do_drive_child(master, input_rx, output_tx.clone()).await;
     
     // Step 5: Output capture is complete, but don't signal waitexit yet
     let _ = command_tx.try_send(Command::Debug("outputCaptureComplete".to_string()));
@@ -97,15 +97,9 @@ async fn drive_child(
     unsafe { libc::kill(child.as_raw(), libc::SIGHUP) };
     eprintln!("waiting for the child process to exit");
 
-    // Give time for user commands to be processed, then signal waitexit
-    let command_tx_clone = command_tx.clone();
-    let fifo_path_clone = fifo_path.clone();
-    tokio::spawn(async move {
-        // Wait a bit to allow any pending user commands to be processed
-        tokio::time::sleep(std::time::Duration::from_millis(200)).await;
-        let _ = command_tx_clone.try_send(Command::SignalWaitexit(fifo_path_clone));
-    });
-
+    // After signaling wait-exit, we want to keep the ht process alive for snapshots
+    // So we don't return here - we keep the output_tx alive and just wait
+    
     // Give waitexit time to process the exit signal and clean up
     tokio::time::sleep(std::time::Duration::from_millis(200)).await;
 
@@ -130,7 +124,39 @@ async fn drive_child(
     .await
     .unwrap();
 
-    result
+    // Instead of returning the result which would drop output_tx,
+    // we keep the task alive indefinitely to keep ht running for snapshots
+    // The output_tx will be kept alive, preventing the main event loop from exiting
+    let _ = command_tx.try_send(Command::Debug("ptyContinuingForSnapshots".to_string()));
+    
+    // Keep this task alive but allow it to exit gracefully when needed
+    // We'll send periodic heartbeats but also check if the main process is shutting down
+    let mut heartbeat_interval = tokio::time::interval(std::time::Duration::from_secs(60));
+    
+    loop {
+        tokio::select! {
+            _ = heartbeat_interval.tick() => {
+                // Send a periodic heartbeat to show we're still alive
+                if command_tx.try_send(Command::Debug("ptyHeartbeat".to_string())).is_err() {
+                    // If we can't send debug commands, the main process is shutting down
+                    let _ = command_tx.try_send(Command::Debug("ptyExitingDueToChannelClosure".to_string()));
+                    break;
+                }
+            }
+            
+            // Add a small delay to prevent busy waiting
+            _ = tokio::time::sleep(std::time::Duration::from_millis(100)) => {
+                // Check if the main command channel is closed (indicating shutdown)
+                if command_tx.is_closed() {
+                    let _ = command_tx.try_send(Command::Debug("ptyExitingDueToMainShutdown".to_string()));
+                    break;
+                }
+            }
+        }
+    }
+
+    let _ = command_tx.try_send(Command::Debug("ptyTaskExiting".to_string()));
+    Ok(())
 }
 
 const READ_BUF_SIZE: usize = 128 * 1024;

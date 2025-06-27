@@ -300,11 +300,74 @@ class HTProcess:
     def exit(self, timeout: float = DEFAULT_EXIT_TIMEOUT) -> int:
         """
         Exit the ht process, ensuring clean shutdown.
+        
+        Uses different strategies based on subprocess state:
+        - If subprocess already exited (exitCode event received): graceful shutdown via exit command
+        - If subprocess still running: forced termination with SIGTERM then SIGKILL
         """
         self.logger.debug(f"Exiting HTProcess: ht_proc.pid={self.ht_proc.pid}")
         
+        # Check if we've already received the exitCode event
+        if self.subprocess_exited:
+            self.logger.debug(f"Subprocess already exited (exitCode event received), attempting graceful shutdown")
+            return self._graceful_exit(timeout)
+        else:
+            self.logger.debug(f"Subprocess has not exited yet, checking current state")
+            
+            # Give a brief moment for any pending exitCode event to arrive
+            brief_wait_start = time.time()
+            while time.time() - brief_wait_start < 0.5:  # Wait up to 500ms
+                if self.subprocess_exited:
+                    self.logger.debug(f"Subprocess exited during brief wait, attempting graceful shutdown")
+                    return self._graceful_exit(timeout)
+                time.sleep(0.01)
+            
+            self.logger.debug(f"Subprocess still running after brief wait, using forced termination")
+            return self._forced_exit(timeout)
+    
+    def _graceful_exit(self, timeout: float) -> int:
+        """
+        Graceful exit: subprocess has completed, so we can send exit command to ht process.
+        """
+        # Send exit command to ht process
+        message = json.dumps({"type": "exit"})
+        self.logger.debug(f"Sending exit command to ht process {self.ht_proc.pid}: {message}")
+        
+        try:
+            if self.ht_proc.stdin is not None:
+                self.ht_proc.stdin.write(message + "\n")
+                self.ht_proc.stdin.flush()
+                self.logger.debug(f"Exit command sent successfully to ht process {self.ht_proc.pid}")
+                self.ht_proc.stdin.close()  # Close stdin after sending exit command
+                self.logger.debug(f"Closed stdin for ht process {self.ht_proc.pid}")
+            else:
+                self.logger.debug(f"ht process {self.ht_proc.pid} stdin is None, cannot send exit command")
+        except (BrokenPipeError, OSError) as e:
+            self.logger.debug(f"Failed to send exit command to ht process {self.ht_proc.pid}: {e} (process may have already exited)")
+            pass
+
+        # Wait for the ht process to finish gracefully
+        start_time = time.time()
+        while self.ht_proc.poll() is None:
+            if time.time() - start_time > timeout:
+                # Graceful exit timed out, fall back to forced termination
+                self.logger.warning(f"ht process {self.ht_proc.pid} did not exit gracefully within timeout, falling back to forced termination")
+                return self._forced_exit(timeout)
+            time.sleep(DEFAULT_SLEEP_AFTER_KEYS)
+
+        self.exit_code = self.ht_proc.returncode
+        if self.exit_code is None:
+            raise RuntimeError("Failed to determine ht process exit code")
+
+        self.logger.debug(f"HTProcess exited gracefully: exit_code={self.exit_code}")
+        return self.exit_code
+    
+    def _forced_exit(self, timeout: float) -> int:
+        """
+        Forced exit: subprocess may still be running, so we need to terminate everything forcefully.
+        """
         # Step 1: Ensure subprocess is terminated first if needed
-        if self.subprocess_controller.pid:
+        if self.subprocess_controller.pid and not self.subprocess_exited:
             self.logger.debug(f"Terminating subprocess: pid={self.subprocess_controller.pid}")
             try:
                 os.kill(self.subprocess_controller.pid, 0)
@@ -322,41 +385,35 @@ class HTProcess:
                 self.logger.debug(f"Subprocess {self.subprocess_controller.pid} already exited")
                 pass  # Process already exited
 
-        # Step 2: Send exit command to ht process
-        message = json.dumps({"type": "exit"})
-        self.logger.debug(f"Sending exit command to ht process {self.ht_proc.pid}: {message}")
+        # Step 2: Force terminate the ht process with SIGTERM, then SIGKILL if needed
+        self.logger.debug(f"Force terminating ht process {self.ht_proc.pid}")
         
+        # Try SIGTERM first
         try:
-            if self.ht_proc.stdin is not None:
-                self.ht_proc.stdin.write(message + "\n")
-                self.ht_proc.stdin.flush()
-                self.logger.debug(f"Exit command sent successfully to ht process {self.ht_proc.pid}")
-                self.ht_proc.stdin.close()  # Close stdin after sending exit command
-                self.logger.debug(f"Closed stdin for ht process {self.ht_proc.pid}")
-            else:
-                self.logger.debug(f"ht process {self.ht_proc.pid} stdin is None, cannot send exit command")
-        except (BrokenPipeError, OSError) as e:
-            self.logger.debug(f"Failed to send exit command to ht process {self.ht_proc.pid}: {e} (process may have already exited)")
-            pass
+            self.ht_proc.terminate()
+            self.logger.debug(f"Sent SIGTERM to ht process {self.ht_proc.pid}")
+        except Exception as e:
+            self.logger.debug(f"Failed to send SIGTERM to ht process {self.ht_proc.pid}: {e}")
 
-        # Step 2b: Handle no_exit case (if needed)
-        if self.no_exit:
-            time.sleep(SUBPROCESS_EXIT_DETECTION_DELAY)
-            # Note: We can't send keys after closing stdin, but the exit command should handle this
-
-        # Step 3: Wait for the ht process to finish
+        # Wait for termination
         start_time = time.time()
         while self.ht_proc.poll() is None:
             if time.time() - start_time > timeout:
-                # Timeout - force terminate
-                logger.warning(f"ht process {self.ht_proc.pid} did not exit within timeout, terminating")
-                self.ht_proc.terminate()
+                # SIGTERM timeout, try SIGKILL
+                self.logger.warning(f"ht process {self.ht_proc.pid} did not terminate with SIGTERM within timeout, sending SIGKILL")
                 try:
-                    self.ht_proc.wait(timeout=DEFAULT_GRACEFUL_TERMINATION_TIMEOUT)
-                except subprocess.TimeoutExpired:
-                    self.logger.warning(f"ht process {self.ht_proc.pid} did not terminate gracefully, killing")
                     self.ht_proc.kill()
-                    self.ht_proc.wait()
+                    self.logger.debug(f"Sent SIGKILL to ht process {self.ht_proc.pid}")
+                except Exception as e:
+                    self.logger.debug(f"Failed to send SIGKILL to ht process {self.ht_proc.pid}: {e}")
+                
+                # Wait for SIGKILL to take effect
+                kill_start_time = time.time()
+                while self.ht_proc.poll() is None:
+                    if time.time() - kill_start_time > timeout:
+                        self.logger.error(f"ht process {self.ht_proc.pid} did not respond to SIGKILL within timeout")
+                        break
+                    time.sleep(DEFAULT_SLEEP_AFTER_KEYS)
                 break
             time.sleep(DEFAULT_SLEEP_AFTER_KEYS)
 
@@ -364,7 +421,7 @@ class HTProcess:
         if self.exit_code is None:
             raise RuntimeError("Failed to determine ht process exit code")
 
-        self.logger.debug(f"HTProcess exited successfully: exit_code={self.exit_code}")
+        self.logger.debug(f"HTProcess exited via forced termination: exit_code={self.exit_code}")
         return self.exit_code
 
     def terminate(self) -> None:

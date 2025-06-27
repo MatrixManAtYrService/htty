@@ -112,30 +112,9 @@ nix/packages/          # Build system (see PACKAGING.md)
 nix/devshells/         # Development environments
 ```
 
-## 📝 Pull Request Process
-
-1. **Fork** the repository
-2. **Create a branch** for your changes
-3. **Make changes** in `src/` (Rust) or `python/` (Python)  
-4. **Add files to git**: `git add .`
-5. **Test your changes**: `nix develop .#pytest --command pytest tests/lib_tests/ -v`
-6. **Commit and push** your changes
-7. **Submit a pull request**
-
-The CI system uses the same Nix-based workflow, so if tests pass locally, they should pass in CI.
-
 ## 🚫 What Not to Do
 
 - **Don't use pip/uv/virtualenv** - The Nix workflow handles all dependencies
 - **Don't manually build** - Let Nix handle builds automatically
 - **Don't ignore test failures** - The fresh code guarantee means failures are real
 - **Don't commit without testing** - Always run tests before committing
-
-## ❓ Getting Help
-
-- **Build issues**: Check that you've added files to git (`git add .`)
-- **Test failures**: The fresh code guarantee means the failure is real - debug normally
-- **Environment issues**: Try `nix develop .#pytest` and see what's available
-- **Complex changes**: See [PACKAGING.md](PACKAGING.md) for build system details
-
-The Nix-based workflow ensures that your development environment exactly matches what users get, making debugging and development more reliable.
