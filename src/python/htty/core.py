@@ -1,5 +1,10 @@
 """
-Core classes for htty terminal process management.
+Core htty functionality for terminal automation.
+
+This module provides the main HTProcess class for running and interacting with
+terminal applications through a headless terminal interface.
+
+# Test comment to verify build optimization works
 """
 
 import json
@@ -14,7 +19,7 @@ from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Union
 
 from .html_utils import simple_ansi_to_html
-from .keys import KeyInput, keys_to_strings
+from .keys import KeyInput, keys_to_strings, Press
 from ._find_ht import find_ht_bin
 
 
@@ -26,7 +31,7 @@ __all__ = [
     "SubprocessController", 
     "HTProcess", 
     "run", 
-    "ht_process",
+    "terminal_session",
     "get_ht_help",
     "DEFAULT_SLEEP_AFTER_KEYS",
     "DEFAULT_SUBPROCESS_WAIT_TIMEOUT",
@@ -633,7 +638,7 @@ def run(
 
 
 @contextmanager
-def ht_process(
+def terminal_session(
     command: Union[str, List[str]],
     rows: Optional[int] = None,
     cols: Optional[int] = None,

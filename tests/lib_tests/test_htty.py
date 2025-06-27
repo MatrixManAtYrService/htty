@@ -12,7 +12,7 @@ from typing import Generator
 
 import pytest
 
-from htty import Press, ht_process, run
+from htty import Press, terminal_session, run
 
 
 @pytest.fixture
@@ -171,7 +171,7 @@ def test_context_manager(hello_world_script: str) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
 
     # Test that context manager works and cleans up automatically
-    with ht_process(cmd, rows=3, cols=8) as proc:
+    with terminal_session(cmd, rows=3, cols=8) as proc:
         proc.send_keys(Press.ENTER)
 
         snapshot = proc.snapshot()
@@ -253,7 +253,7 @@ def test_vim_startup_screen_context_manager() -> None:
     except KeyError:
         pytest.skip("htty_TEST_VIM_TARGET not set - please run in nix devshell")
 
-    with ht_process(vim_path, rows=20, cols=50) as proc:
+    with terminal_session(vim_path, rows=20, cols=50) as proc:
         snapshot = proc.snapshot()
         # context manager terminates subprocess on context exit
 

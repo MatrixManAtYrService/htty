@@ -45,10 +45,10 @@ build-backend = "maturin"
 
 [tool.maturin]
 bindings = "bin"
-python-source = "python"
+python-source = "src/python"
 strip = true
 include = [
-    { path = "python/htty/scripts/htty", format = ["wheel", "sdist"] }
+    { path = "src/python/htty/scripts/htty", format = ["wheel", "sdist"] }
 ]
 
 [dependency-groups]

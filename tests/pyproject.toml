@@ -11,10 +11,19 @@ dependencies = [
     # htty is provided separately by htty-pylib input
 ]
 
-# No build-system needed since this is just for dependency resolution
-# [build-system]
-# requires = ["hatchling"]
-# build-backend = "hatchling.build"
+# Build system configuration to prevent setuptools from treating test directories as packages
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# Explicitly specify what to include - just the pyproject.toml and conftest.py, no test directories as packages
+[tool.hatch.build.targets.wheel]
+sources = []
+packages = []
+include = [
+    "pyproject.toml",
+    "conftest.py"
+]
 
 [tool.pytest.ini_options]
 testpaths = ["."]

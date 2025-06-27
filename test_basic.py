@@ -26,20 +26,20 @@ def test_basic_import():
     assert htty.Press.TAB == "Tab", f"Expected 'Tab', got '{htty.Press.TAB}'"
     print("✓ htty.Press key values are correct")
 
-def test_ht_process_creation():
-    """Test creating an ht process context manager"""
-    print("Testing ht_process creation...")
+def test_terminal_session_creation():
+    """Test creating a terminal session context manager"""
+    print("Testing terminal_session creation...")
     
     # This should work but may fail if the ht binary isn't found
     try:
-        with htty.ht_process("echo test", rows=10, cols=40) as proc:
-            print("✓ ht_process context manager created successfully")
+        with htty.terminal_session("echo test", rows=10, cols=40) as proc:
+            print("✓ terminal_session context manager created successfully")
             # Test basic process interaction
             snapshot = proc.snapshot()
             print("✓ snapshot() method works")
             print(f"✓ Snapshot text length: {len(snapshot.text) if hasattr(snapshot, 'text') else 'No text attr'}")
     except Exception as e:
-        print(f"⚠ ht_process test failed (expected if ht binary not available): {e}")
+        print(f"⚠ terminal_session test failed (expected if ht binary not available): {e}")
 
 def test_run_function():
     """Test the run function"""
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     try:
         test_basic_import()
         print()
-        test_ht_process_creation()
+        test_terminal_session_creation()
         print()
         test_run_function()
         print()

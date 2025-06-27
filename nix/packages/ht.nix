@@ -1,4 +1,4 @@
-# Main htty Rust binary package
+# Main ht Rust binary package
 { inputs, pkgs, ... }:
 
 let
@@ -17,11 +17,37 @@ let
   cargoToml = builtins.fromTOML (builtins.readFile ../../Cargo.toml);
   inherit (cargoToml.package) version;
 
+  # Only include Rust-related files to avoid rebuilds on Python changes
+  rustOnlySource = pkgs.lib.cleanSourceWith {
+    src = ../..;
+    filter = path: type:
+      let
+        baseName = baseNameOf path;
+        # Get relative path from project root
+        projectRoot = toString ../..;
+        relPath = pkgs.lib.removePrefix projectRoot (toString path);
+      in
+        # Include Rust source files
+        (pkgs.lib.hasPrefix "/src/rust" relPath) ||
+        # Include assets directory (needed by rust-embed)
+        (pkgs.lib.hasPrefix "/assets" relPath) ||
+        # Include directory structure
+        (relPath == "/src/rust" && type == "directory") ||
+        (relPath == "/src" && type == "directory") ||
+        (relPath == "/assets" && type == "directory") ||
+        # Include Cargo files  
+        (baseName == "Cargo.toml") ||
+        (baseName == "Cargo.lock") ||
+        # Include license and readme
+        (baseName == "LICENSE") ||
+        (baseName == "README.md");
+  };
+
 in
 pkgsWithRust.rustPlatform.buildRustPackage {
-  pname = "htty";
+  pname = "ht";
   inherit version;
-  src = ../..;
+  src = rustOnlySource;
 
   cargoLock = {
     lockFile = ../../Cargo.lock;

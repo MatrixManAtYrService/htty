@@ -13,10 +13,11 @@ description = "Headless Terminal (htty fork)"
 name = "htty"
 crate-type = ["cdylib", "rlib"]
 required-features = ["python"]
+path = "src/rust/lib.rs"
 
 [[bin]]
 name = "ht"
-path = "src/main.rs"
+path = "src/rust/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

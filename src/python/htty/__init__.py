@@ -12,7 +12,7 @@ from .core import (
     SnapshotResult,
     SubprocessController,
     run,
-    ht_process,
+    terminal_session,
     get_ht_help,
 )
 from .keys import (
@@ -29,7 +29,7 @@ __all__ = [
     "Press",
     "KeyInput",
     "run",
-    "ht_process",
+    "terminal_session",
     "get_ht_help",
     "find_ht_bin",
     "SubprocessController",
