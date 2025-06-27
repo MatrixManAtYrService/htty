@@ -7,10 +7,10 @@ This project uses a sophisticated Nix-based build system that creates a DAG (Dir
 ## 📊 The Build DAG
 
 ```
-Rust Source Code (src/)
+Rust Source Code (src/rust/)
      ↓
 ┌────────────────┐
-│   htty.nix     │ ← Pure Rust binary (ht command)
+│     ht.nix     │ ← Pure Rust binary (ht command)
 └────────────────┘
      ↓
 ┌────────────────┐
@@ -20,27 +20,27 @@ Rust Source Code (src/)
 ┌────────────────┐
 │ htty-pylib.nix │ ← Clean Python environment with htty library
 └────────────────┘
-     ↓                    ↓
-┌────────────────┐   ┌────────────────┐
-│ htty-cli.nix   │   │ htty-test.nix  │ ← Wrapper scripts for testing
-└────────────────┘   └────────────────┘
-                          ↓
-                     ┌────────────────┐
-                     │ #pytest shell  │ ← Development environment
-                     └────────────────┘
+     ↓                           ↓                    ↓
+┌────────────────┐   ┌────────────────┐   ┌────────────────┐
+│ htty-cli.nix   │   │ htty-test.nix  │   │htty-py-sdist.nix│ ← Hatchling Python-only
+└────────────────┘   └────────────────┘   └────────────────┘
+                          ↓                    ↓
+                     ┌────────────────┐   ┌────────────────┐
+                     │#pytest-wheel   │   │#pytest-sdist   │ ← Development environments
+                     └────────────────┘   └────────────────┘
 ```
 
 ## 📦 Package Definitions
 
-### 1. `htty.nix` - Pure Rust Binary
+### 1. `ht.nix` - Pure Rust Binary
 
 **Purpose:** The core Rust binary with no Python dependencies  
-**Location:** `nix/packages/htty.nix`  
-**Input:** `src/` directory (Rust source code)  
+**Location:** `nix/packages/ht.nix`  
+**Input:** `src/rust/` directory (Rust source code)  
 **Output:** `ht` binary  
 
 ```bash
-nix build .#htty
+nix build .#ht
 ./result/bin/ht --help
 ```
 
@@ -61,7 +61,7 @@ nix build .#htty
 
 **Purpose:** Python wheel containing both Python library and Rust binary  
 **Location:** `nix/packages/htty-wheel.nix`  
-**Input:** `src/` directory + `python/` directory  
+**Input:** `src/rust/` directory + `src/python/` directory  
 **Output:** `.whl` file  
 
 ```bash
@@ -87,7 +87,7 @@ ls ./result/*.whl
 
 **Purpose:** Production Python environment that users receive  
 **Location:** `nix/packages/htty-pylib.nix`  
-**Input:** `htty-wheel.nix` + `pylib-env/` directory  
+**Input:** `htty-wheel.nix` + `py-envs/lib/` directory  
 **Output:** Python virtual environment with htty installed  
 
 ```bash
@@ -96,14 +96,14 @@ nix build .#htty-pylib
 ```
 
 **What it does:**
-- Uses `uv2nix` to load `pylib-env/pyproject.toml` and `pylib-env/uv.lock`
+- Uses `uv2nix` to load `py-envs/lib/pyproject.toml` and `py-envs/lib/uv.lock`
 - Creates Python package set with pyproject-nix
 - Overrides the `htty` package to use our wheel instead of PyPI
 - Creates clean virtual environment with htty + its dependencies
 - **Includes CLI tools**: Provides both `ht` binary and `python -m htty` access
 - **This is exactly what end users get**
 
-**Dependencies specified in `pylib-env/pyproject.toml`:**
+**Dependencies specified in `py-envs/lib/pyproject.toml`:**
 ```toml
 [project]
 name = "htty-pylib-env"
@@ -187,31 +187,59 @@ dependencies = [
 
 ---
 
-### 6. `#pytest` - Development Shell
+### 6. `htty-py-sdist.nix` - Pure Python Source Distribution
 
-**Purpose:** Clean development environment with fresh code guarantee  
-**Location:** `nix/devshells/pytest.nix`  
-**Input:** `htty-pylib.nix` + test dependencies via uv2nix  
-**Output:** Interactive shell with pytest and htty available  
+**Purpose:** Python-only package built with hatchling for unit testing  
+**Location:** `nix/packages/htty-py-sdist.nix`  
+**Input:** `src/python/` directory (Python source only)  
+**Output:** Python environment with htty but no ht binary  
 
 ```bash
-nix develop .#pytest
-pytest tests/lib_tests/ -v  # Direct pytest execution
+nix build .#htty-py-sdist
+# Used internally by pytest-sdist devshell
 ```
 
 **What it does:**
-- Gets the exact `htty-pylib` environment (what users receive)
-- Creates separate `test-deps-only` environment via uv2nix from `tests/`
-- Combines both via PYTHONPATH in the shell environment
-- Rebuilds htty-pylib whenever source code changes
+- Uses hatchling to create proper Python source distribution
+- Contains only Python source code (no Rust binary)
+- Perfect for unit testing in isolation
+- Fast builds (~3s) since no Rust compilation needed
+
+---
+
+### 7. `#pytest-wheel` & `#pytest-sdist` - Development Shells
+
+**Purpose:** Environment-specific development shells with pytest marks support  
+**Location:** `nix/devshells/pytest-wheel.nix` and `nix/devshells/pytest-sdist.nix`  
+**Input:** Different htty packages + test dependencies via uv2nix  
+**Output:** Interactive shells optimized for different test types  
+
+```bash
+# Integration testing with ht binary (22s builds)
+nix develop .#pytest-wheel
+pytest -vs -m wheel  # Run wheel-marked tests
+
+# Unit testing without binary (3s builds)  
+nix develop .#pytest-sdist
+pytest -vs -m sdist  # Run sdist-marked tests
+```
+
+**What they do:**
+- **pytest-wheel**: Uses `htty-pylib` (complete wheel with ht binary)
+- **pytest-sdist**: Uses `htty-py-sdist` (Python-only source distribution)
+- Both create separate `test-deps-only` environment via uv2nix from `tests/`
+- Combine environments via PYTHONPATH in shell environment
+- Rebuild appropriate packages when source code changes
 - **No wrapper scripts** - direct tool access
 - **Fresh code guarantee** - every entry rebuilds if needed
+- **Pytest marks support** - tests declare their environmental needs
 
 **Technical details:**
-- Uses `mkShell` with both environments in buildInputs
-- Sets PYTHONPATH in shellHook for proper precedence
-- Includes development tools (uv, ruff, nixpkgs-fmt, nil)
+- Use `mkShell` with both environments in buildInputs
+- Set PYTHONPATH in shellHook for proper precedence
+- Include development tools (uv, ruff, nixpkgs-fmt, nil)
 - Platform-specific dependencies (libiconv, Foundation on macOS)
+- Support pytest marks: `@pytest.mark.wheel` and `@pytest.mark.sdist`
 
 ## 🔄 Dependency Resolution
 
@@ -219,15 +247,20 @@ pytest tests/lib_tests/ -v  # Direct pytest execution
 
 The project uses `uv2nix` for Python dependency management:
 
-1. **`pylib-env/`** - Production dependencies
+1. **`py-envs/lib/`** - Production dependencies
    - `pyproject.toml` defines htty + runtime deps
    - `uv.lock` pins exact versions
    - Used by `htty-pylib.nix`
 
-2. **`tests/`** - Test dependencies  
+2. **`py-envs/sdist/`** - Python-only dependencies
+   - `pyproject.toml` defines htty with hatchling backend (no Rust)
+   - `uv.lock` pins exact versions  
+   - Used by `htty-py-sdist.nix`
+
+3. **`tests/`** - Test dependencies  
    - `pyproject.toml` defines pytest + test tools
    - `uv.lock` pins exact versions
-   - Used by both `htty-test.nix` and `#pytest` shell
+   - Used by both `pytest-wheel` and `pytest-sdist` devshells
 
 ### Overlay System
 
@@ -249,10 +282,11 @@ pythonSet = (pkgs.callPackage pyproject-nix.build.packages {
 
 The Nix dependency system automatically rebuilds packages when inputs change:
 
-- **`src/*.rs` changes** → `htty.nix` → `htty-wheel.nix` → `htty-pylib.nix` → downstream
-- **`python/**/*.py` changes** → `htty-wheel.nix` → `htty-pylib.nix` → downstream
-- **`pylib-env/uv.lock` changes** → `htty-pylib.nix` → downstream  
-- **`tests/uv.lock` changes** → test environments
+- **`src/rust/*.rs` changes** → `ht.nix` → `htty-wheel.nix` → `htty-pylib.nix` → pytest-wheel
+- **`src/python/**/*.py` changes** → `htty-wheel.nix` → `htty-pylib.nix` → pytest-wheel, `htty-py-sdist.nix` → pytest-sdist
+- **`py-envs/lib/uv.lock` changes** → `htty-pylib.nix` → pytest-wheel  
+- **`tests/uv.lock` changes** → both pytest environments
+- **`py-envs/sdist/pyproject.toml` changes** → `htty-py-sdist.nix` → pytest-sdist
 
 ## 🎯 Design Principles
 
@@ -326,11 +360,13 @@ pkgs.stdenv.mkDerivation {
 
 | Package | Use Case | Command |
 |---------|----------|---------|
-| `htty` | Standalone Rust binary | `nix run .#htty` |
+| `ht` | Standalone Rust binary | `nix run .#ht` |
 | `htty-wheel` | Python packaging integration | `nix build .#htty-wheel` |
 | `htty-pylib` | Python development/production | `nix shell .#htty-pylib` |
+| `htty-py-sdist` | Python-only unit testing | `nix build .#htty-py-sdist` |
 | `htty-cli` | DevShell CLI tools | Include in `buildInputs` |
 | `htty-test` | CI/testing (legacy) | `nix build .#htty-test` |
-| `#pytest` | Development workflow | `nix develop .#pytest` |
+| `#pytest-wheel` | Integration test workflow | `nix develop .#pytest-wheel` |
+| `#pytest-sdist` | Unit test workflow | `nix develop .#pytest-sdist` |
 
 This architecture ensures clean separation of concerns while providing maximum flexibility for different use cases.

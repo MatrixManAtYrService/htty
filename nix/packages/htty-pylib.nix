@@ -11,7 +11,7 @@ let
 
   # Load the pylib workspace 
   workspace = inputs.uv2nix.lib.workspace.loadWorkspace {
-    workspaceRoot = ../../pylib-env;
+    workspaceRoot = ../../py-envs/lib;
   };
 
   # Override htty to use our wheel (without problematic symlinks)

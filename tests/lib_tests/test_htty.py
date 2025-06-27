@@ -84,6 +84,7 @@ def colored_hello_world_script() -> Generator[str, None, None]:
     # Don't delete the file so it can be run manually after tests
 
 
+@pytest.mark.wheel
 def test_hello_world_with_scrolling(hello_world_script: str, test_logger) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
     proc = run(cmd, rows=3, cols=8, logger=test_logger)

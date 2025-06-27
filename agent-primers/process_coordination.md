@@ -26,7 +26,7 @@ Before this implementation, there was a **deadlock** in the shutdown sequence:
 - Runs `wait-exit` to block on FIFO
 - Preserves original exit code
 
-### 2. **Wait-Exit Process** (`src/main.rs:handle_waitexit`)
+### 2. **Wait-Exit Process** (`src/rust/main.rs:handle_waitexit`)
 ```rust
 // Creates FIFO and blocks reading from it
 let fifo_path_cstr = std::ffi::CString::new(fifo_path_str.as_bytes()).unwrap();
@@ -38,7 +38,7 @@ for line in reader.lines() {
 }
 ```
 
-### 3. **FIFO Monitoring Task** (`src/pty.rs`)
+### 3. **FIFO Monitoring Task** (`src/rust/pty.rs`)
 ```rust
 // Checks every 50ms for FIFO existence
 let mut interval = tokio::time::interval(Duration::from_millis(50));
@@ -52,7 +52,7 @@ loop {
 }
 ```
 
-### 4. **Command Channel Emptiness Tracker** (`src/main.rs`)
+### 4. **Command Channel Emptiness Tracker** (`src/rust/main.rs`)
 ```rust
 // Tracks when command channel has been continuously empty
 let mut last_command_time = std::time::Instant::now();
@@ -76,7 +76,7 @@ _ = emptiness_check_interval.tick() => {
 }
 ```
 
-### 5. **PTY Keep-Alive Task** (`src/pty.rs`)
+### 5. **PTY Keep-Alive Task** (`src/rust/pty.rs`)
 ```rust
 // Keeps ht process alive for snapshots after subprocess completion
 let mut heartbeat_interval = tokio::time::interval(Duration::from_secs(60));
@@ -94,7 +94,7 @@ loop {
 }
 ```
 
-### 6. **Intelligent Exit Strategy** (`python/htty/core.py`)
+### 6. **Intelligent Exit Strategy** (`src/python/htty/core.py`)
 ```python
 def exit(self, timeout: float) -> int:
     if self.subprocess_exited:  # exitCode event received
@@ -157,11 +157,11 @@ def exit(self, timeout: float) -> int:
 
 | Parameter | Value | Purpose | Location |
 |-----------|--------|---------|----------|
-| **FIFO Check Interval** | 50ms | Detect subprocess completion | `src/pty.rs` |
-| **Emptiness Check Interval** | 10ms | Monitor command channel | `src/main.rs` |
-| **Quiescence Period** | 200ms | Ensure no pending commands | `src/main.rs` |
-| **Brief Exit Wait** | 500ms | Allow pending exitCode events | `python/htty/core.py` |
-| **PTY Heartbeat** | 60s | Keep-alive signal | `src/pty.rs` |
+| **FIFO Check Interval** | 50ms | Detect subprocess completion | `src/rust/pty.rs` |
+| **Emptiness Check Interval** | 10ms | Monitor command channel | `src/rust/main.rs` |
+| **Quiescence Period** | 200ms | Ensure no pending commands | `src/rust/main.rs` |
+| **Brief Exit Wait** | 500ms | Allow pending exitCode events | `src/python/htty/core.py` |
+| **PTY Heartbeat** | 60s | Keep-alive signal | `src/rust/pty.rs` |
 
 ### Why 200ms Quiescence?
 

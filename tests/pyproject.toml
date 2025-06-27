@@ -33,3 +33,8 @@ log_cli = true
 log_cli_level = "WARNING"  # Only show warnings and errors by default
 log_cli_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 log_auto_indent = true
+# Custom marks for different test environments
+markers = [
+    "wheel: tests that require the htty wheel with ht binary",
+    "sdist: tests that run with pure Python source distribution (no ht binary)"
+]

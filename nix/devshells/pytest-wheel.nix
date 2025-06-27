@@ -63,16 +63,17 @@ pkgsWithRust.mkShell {
   ];
 
   shellHook = ''
-    echo "🧪 htty pytest environment ready!"
+    echo "🧪 htty pytest-wheel environment ready!"
     echo ""
-    echo "Testing htty-pylib: ${httyPylib}"
+    echo "Testing htty-pylib (wheel with ht binary): ${httyPylib}"
     echo "With test tools: ${testDepsEnv}"
     echo ""
     echo "Available commands:"
     echo "  pytest        - Run tests directly"
-    echo "  python        - Python with htty + test tools"
+    echo "  python        - Python with htty + test tools + ht binary"
     echo ""
     echo "Example usage:"
+    echo "  pytest -vs -m wheel  # Run wheel-marked tests"
     echo "  pytest tests/lib_tests/test_htty.py::test_hello_world_with_scrolling -v -s"
     echo "  pytest tests/lib_tests/ -v"
     echo ""
