@@ -48,6 +48,17 @@ def test_nix_htty_cli_ht_command():
     assert result.returncode == 0, f"ht command failed from htty-cli: {result.stderr}"
 
 
+@pytest.mark.wheel
+def test_nix_htty_pylib_htty_command():
+    """Test that htty-pylib package provides htty command"""
+    result = subprocess.run([
+        "nix", "shell", ".#htty-pylib", "--command",
+        "htty", "--help"
+    ], capture_output=True, text=True, cwd="/Users/matt/src/ht")
+    
+    assert result.returncode == 0, f"htty command failed from htty-pylib: {result.stderr}"
+
+
 @pytest.mark.cli
 def test_nix_htty_cli_htty_command():
     """Test that htty-cli package provides htty command"""
