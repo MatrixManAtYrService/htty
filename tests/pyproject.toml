@@ -19,7 +19,8 @@ dependencies = [
 [tool.pytest.ini_options]
 testpaths = ["."]
 python_files = "test_*.py"
+# Keep live logging enabled for debugging hanging tests
 log_cli = true
-log_cli_level = "DEBUG"
+log_cli_level = "WARNING"  # Only show warnings and errors by default
 log_cli_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-log_level = "DEBUG"
+log_auto_indent = true

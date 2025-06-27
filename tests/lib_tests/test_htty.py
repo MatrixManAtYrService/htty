@@ -3,6 +3,7 @@ Simple test using the htty module to make assertions about terminal output.
 Adapted from the original htty test suite.
 """
 
+import logging
 import os
 import sys
 import tempfile
@@ -12,6 +13,27 @@ from typing import Generator
 import pytest
 
 from htty import Press, ht_process, run
+
+
+@pytest.fixture
+def test_logger():
+    """Create a custom logger for tests that doesn't propagate to pytest's loggers."""
+    logger = logging.getLogger("htty.test")
+    logger.setLevel(logging.DEBUG)
+    
+    # Don't propagate to avoid pytest's dual logging system
+    logger.propagate = False
+    
+    # Add a simple console handler for live logging
+    if not logger.handlers:
+        handler = logging.StreamHandler()
+        handler.setLevel(logging.DEBUG)
+        # Simple format: just "ht stderr:" instead of timestamps and logger names
+        formatter = logging.Formatter('%(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    
+    return logger
 
 COLORED_HELLO_WORLD_SCRIPT = """
 print("\\033[31mhello\\033[0m")
@@ -24,65 +46,57 @@ print("\\033[33mgoodbye\\033[0m")
 
 @pytest.fixture
 def hello_world_script() -> Generator[str, None, None]:
-    with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as tmp:
-        tmp.write(
-            dedent("""
-                print("hello")
-                input()
-                print("world")
-                input()
-                print("goodbye")
-            """).encode("utf-8")
-        )
-        tmp_path = tmp.name
+    # Use a fixed filename in /tmp so it can be run manually after tests
+    script_path = "/tmp/htty_test_hello_world.py"
+    
+    with open(script_path, "w") as f:
+        f.write(dedent("""
+            print("hello")
+            input()
+            print("world")
+            input()
+            print("goodbye")
+        """))
 
-    yield tmp_path
-    try:
-        os.unlink(tmp_path)
-    except OSError:
-        pass
+    yield script_path
+    # Don't delete the file so it can be run manually after tests
+    # try:
+    #     os.unlink(script_path)
+    # except OSError:
+    #     pass
 
 
 @pytest.fixture
 def colored_hello_world_script() -> Generator[str, None, None]:
-    with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as tmp:
-        tmp.write(
-            dedent(
-                """
-                print("\\033[31mhello\\033[0m")
-                input()
-                print("\\033[32mworld\\033[0m")
-                input()
-                print("\\033[33mgoodbye\\033[0m")
-                """
-            ).encode("utf-8")
-        )
-        tmp_path = tmp.name
+    # Use a fixed filename in /tmp so it can be run manually after tests
+    script_path = "/tmp/htty_test_colored_hello_world.py"
+    
+    with open(script_path, "w") as f:
+        f.write(dedent("""
+            print("\\033[31mhello\\033[0m")
+            input()
+            print("\\033[32mworld\\033[0m")
+            input()
+            print("\\033[33mgoodbye\\033[0m")
+        """))
 
-    yield tmp_path
-    try:
-        os.unlink(tmp_path)
-    except OSError:
-        pass
+    yield script_path
+    # Don't delete the file so it can be run manually after tests
 
 
-def test_hello_world_with_scrolling(hello_world_script: str) -> None:
+def test_hello_world_with_scrolling(hello_world_script: str, test_logger) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
-    proc = run(cmd, rows=3, cols=8)
-    try:
-        assert proc.snapshot().text == ("hello   \n        \n        ")
-
-        # hello has scrolled out of view
-        proc.send_keys(Press.ENTER)
-        assert proc.snapshot().text == ("        \nworld   \n        ")
-    finally:
-        # Ensure proper cleanup
-        proc.exit()
+    proc = run(cmd, rows=3, cols=8, logger=test_logger)
+    assert proc.snapshot().text == ("hello   \n        \n        ")
+    # hello has scrolled out of view
+    proc.send_keys(Press.ENTER)
+    assert proc.snapshot().text == ("        \nworld   \n        ")
+    proc.send_keys(Press.ENTER)
 
 
-def test_hello_world_after_exit(hello_world_script: str) -> None:
+def test_hello_world_after_exit(hello_world_script: str, test_logger) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
-    ht = run(cmd, rows=6, cols=8)
+    ht = run(cmd, rows=6, cols=8, extra_subscribes=["debug"], logger=test_logger)
     ht.send_keys(Press.ENTER)
     ht.send_keys(Press.ENTER)
     ht.subprocess_controller.wait()
@@ -93,9 +107,9 @@ def test_hello_world_after_exit(hello_world_script: str) -> None:
     assert exit_code == 0
 
 
-def test_outputs(hello_world_script: str) -> None:
+def test_outputs(hello_world_script: str, test_logger) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
-    ht = run(cmd, rows=4, cols=8)
+    ht = run(cmd, rows=4, cols=8, logger=test_logger)
     ht.send_keys(Press.ENTER)  # First input() call
     ht.send_keys(Press.ENTER)  # Second input() call to let script finish
     # Wait for the script to complete naturally
