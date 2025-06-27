@@ -34,6 +34,27 @@ let
     ]
   );
 
+  # Create the Python environment with htty available
+  pythonEnv = pythonSet.mkVirtualEnv "htty-pylib" workspace.deps.default;
+
 in
-# Create a Python environment with htty available
-pythonSet.mkVirtualEnv "htty-pylib" workspace.deps.default
+# Wrap the Python environment to also provide CLI tools
+pkgs.symlinkJoin {
+  name = "htty-pylib-${version}";
+  paths = [ pythonEnv ];
+  
+  buildInputs = [ pkgs.makeWrapper ];
+  
+  postBuild = ''
+    # Create htty CLI wrapper that uses this environment
+    makeWrapper ${pythonEnv}/bin/python $out/bin/htty \
+      --add-flags "-m htty"
+  '';
+  
+  meta = with pkgs.lib; {
+    description = "Headless Terminal - Python library with CLI";
+    homepage = "https://github.com/MatrixManAtYrService/ht";
+    license = licenses.mit;
+    platforms = platforms.unix;
+  };
+}

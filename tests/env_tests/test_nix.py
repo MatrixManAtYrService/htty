@@ -108,14 +108,4 @@ def test_nix_htty_py_sdist_no_htty_command():
     assert "No such file or directory" in result.stderr or "not found" in result.stderr, f"Expected command not found error, got: {result.stderr}"
 
 
-@pytest.mark.wheel
-def test_nix_htty_pylib_no_htty_command():
-    """Test that htty-pylib package does not provide htty command (expected to fail for now)"""
-    result = subprocess.run([
-        "nix", "shell", ".#htty-pylib", "--command",
-        "htty", "--help"
-    ], capture_output=True, text=True, cwd="/Users/matt/src/ht")
-    
-    # Should fail with command not found (this is the issue to be fixed later)
-    assert result.returncode != 0, "htty command should fail from htty-pylib package (until PATH issue is fixed)"
-    assert "No such file or directory" in result.stderr or "not found" in result.stderr, f"Expected command not found error, got: {result.stderr}"
+
