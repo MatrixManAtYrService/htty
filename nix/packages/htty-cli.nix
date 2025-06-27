@@ -1,4 +1,5 @@
 # CLI package - provides both 'ht' (Rust binary) and 'htty' (Python CLI)
+# But doesn't alter the python environment re: imports
 { inputs, pkgs, ... }:
 
 let
@@ -37,8 +38,7 @@ pkgsWithRust.stdenv.mkDerivation {
     rustPlatform.cargoSetupHook
   ];
 
-  buildInputs = with pkgsWithRust; [
-    # Add any required libraries here
+  buildInputs = [
   ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
     pkgs.libiconv
     pkgs.darwin.apple_sdk.frameworks.Foundation

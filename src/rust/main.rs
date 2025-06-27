@@ -1,4 +1,4 @@
-// Main entry point for the ht binary
+//  Main entry point for the ht binary
 // Test comment for build optimization verification
 
 mod api;

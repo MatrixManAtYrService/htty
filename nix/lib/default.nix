@@ -6,4 +6,4 @@
 pkgs: {
   pypkg = (import ./pypkg.nix { inherit inputs; }) pkgs;
   testcfg = (import ./testcfg.nix { inherit inputs; }) pkgs;
-}
+} // (import ./pytest-shell.nix { inherit inputs; }) pkgs

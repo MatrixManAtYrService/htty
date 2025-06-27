@@ -80,5 +80,7 @@ combine-as-imports = true
 # Custom marks for different test environments
 markers = [
     "wheel: tests that require the htty wheel with ht binary",
-    "sdist: tests that run with pure Python source distribution (no ht binary)"
+    "sdist: tests that run with pure Python source distribution (no ht binary)",
+    "empty: tests that verify pytest-empty environment has no htty packages",
+    "cli: tests that verify pytest-cli environment has CLI tools but no Python module"
 ]

@@ -1,14 +1,9 @@
-# Pure Python source package - Python code only, no ht binary
-# Built using hatchling for proper Python source distribution
+# Pure Python source package - uses uv2nix to read dependencies from root pyproject.toml
 { inputs, pkgs, ... }:
 
 let
-  # Get project metadata from pyproject.toml
-  pyprojectToml = builtins.fromTOML (builtins.readFile ../../py-envs/sdist/pyproject.toml);
-  inherit (pyprojectToml.project) version;
-
-  # Include files needed for hatchling build
-  pythonBuildSource = pkgs.lib.cleanSourceWith {
+  # Include only Python source files for fast rebuilds
+  pythonSourceOnly = pkgs.lib.cleanSourceWith {
     src = ../..;
     filter = path: type:
       let
@@ -22,60 +17,19 @@ let
         # Include directory structure
         (relPath == "/src/python" && type == "directory") ||
         (relPath == "/src" && type == "directory") ||
-        # Include py-envs directory and its contents
-        (pkgs.lib.hasPrefix "/py-envs" relPath) ||
-        (relPath == "/py-envs" && type == "directory") ||
+        # Include pyproject.toml for reference
+        (baseName == "pyproject.toml") ||
         # Include license and readme
         (baseName == "LICENSE") ||
         (baseName == "README.md");
   };
 
-  # Create sdist using hatchling
-  htty-sdist = pkgs.stdenv.mkDerivation {
-    pname = "htty-py-sdist";
-    inherit version;
-    src = pythonBuildSource;
-
-    nativeBuildInputs = with pkgs; [
-      python3
-      python3Packages.hatchling
-      python3Packages.build
-    ];
-
-    buildPhase = ''
-      echo "Building Python source distribution with hatchling..."
-      
-      # Use the Python-only pyproject.toml
-      cp py-envs/sdist/pyproject.toml pyproject.toml
-      
-      # Build the source distribution
-      python -m build --sdist --outdir dist/
-    '';
-
-    installPhase = ''
-      mkdir -p $out
-      
-      # Copy the sdist to output
-      cp dist/*.tar.gz $out/
-      
-      # Also extract it for direct use
-      mkdir -p $out/extracted
-      cd $out/extracted
-      tar -xzf $out/*.tar.gz --strip-components=1
-    '';
-
-    meta = with pkgs.lib; {
-      description = "htty Python source distribution (hatchling-built)";
-      license = licenses.mit;
-    };
-  };
-
-  # Load workspace for Python dependencies
+  # Load workspace from root pyproject.toml (which has htty + ansi2html dependencies)
   workspace = inputs.uv2nix.lib.workspace.loadWorkspace {
-    workspaceRoot = ../../py-envs/sdist;
+    workspaceRoot = ../..;
   };
 
-  # Create Python package set
+  # Create Python package set with dependencies from root pyproject.toml
   pythonSet = (pkgs.callPackage inputs.pyproject-nix.build.packages {
     python = pkgs.python3;
   }).overrideScope (
@@ -84,28 +38,39 @@ let
       (workspace.mkPyprojectOverlay { 
         sourcePreference = "wheel";
       })
-      # Override htty to use the hatchling-built source
+      # Override htty to use Python source only (no Rust compilation)
       (final: prev: {
-        htty = pkgs.stdenv.mkDerivation {
-          pname = "htty-py-source";
-          inherit version;
-          src = "${htty-sdist}/extracted";
+        htty = prev.htty.overrideAttrs (old: {
+          # Replace source with our Python-only source
+          src = pythonSourceOnly;
           
+          # Don't build anything, just copy Python source
+          format = "other";
+          
+          # Simple copy operation
           installPhase = ''
-            mkdir -p $out/lib/python3.12/site-packages
-            # Copy Python source from hatchling sdist (package is at root level)
-            cp -r htty $out/lib/python3.12/site-packages/
+            mkdir -p $out/${final.python.sitePackages}
+            
+            # Copy Python source directly
+            cp -r src/python/htty $out/${final.python.sitePackages}/
+            
+            # Make sure directories are readable
+            find $out -type d -exec chmod 755 {} \;
+            find $out -type f -exec chmod 644 {} \;
           '';
           
-          meta = with pkgs.lib; {
-            description = "htty Python source (from hatchling sdist)";
-            license = licenses.mit;
+          # Don't run any build steps
+          dontConfigure = true;
+          dontBuild = true;
+          
+          meta = old.meta // {
+            description = "htty Python source (no Rust binary)";
           };
-        };
+        });
       })
     ]
   );
 
 in
-# Create Python environment with htty from hatchling source distribution
-pythonSet.mkVirtualEnv "htty-py-sdist" workspace.deps.default 
+# Create Python environment with htty (source) + dependencies (from root pyproject.toml)
+pythonSet.mkVirtualEnv "htty-py-sdist" workspace.deps.default

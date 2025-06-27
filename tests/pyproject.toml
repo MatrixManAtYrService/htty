@@ -26,8 +26,21 @@ include = [
 ]
 
 [tool.pytest.ini_options]
+# Only look for tests in the current directory (tests/)
 testpaths = ["."]
 python_files = "test_*.py"
+# Ignore common directories that shouldn't contain tests
+norecursedirs = [
+    "result",
+    ".git", 
+    ".nix*",
+    "target",
+    "__pycache__",
+    ".pytest_cache",
+    "build",
+    "dist",
+    ".venv"
+]
 # Keep live logging enabled for debugging hanging tests
 log_cli = true
 log_cli_level = "WARNING"  # Only show warnings and errors by default
@@ -36,5 +49,7 @@ log_auto_indent = true
 # Custom marks for different test environments
 markers = [
     "wheel: tests that require the htty wheel with ht binary",
-    "sdist: tests that run with pure Python source distribution (no ht binary)"
+    "sdist: tests that run with pure Python source distribution (no ht binary)",
+    "empty: tests that verify pytest-empty environment has no htty packages",
+    "cli: tests that verify pytest-cli environment has CLI tools but no Python module"
 ]

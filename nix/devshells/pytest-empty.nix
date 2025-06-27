@@ -1,4 +1,4 @@
-# uv2nix-based pytest devshell for pure Python unit tests (no ht binary)
+# Pure pytest devshell with no additional packages
 { flake, inputs, system, perSystem, ... }:
 
 let
@@ -9,6 +9,6 @@ in
 lib.makePytestShell {
   inherit pkgs system perSystem;
   
-  # Use the pure Python htty environment (no binary)
-  packages = [ perSystem.self.htty-py-sdist ];
+  # No packages - pure pytest environment
+  packages = [];
 }

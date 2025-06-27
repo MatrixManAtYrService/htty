@@ -2,7 +2,6 @@
 { inputs, pkgs, ... }:
 
 let
-  # Get overlays for Rust
   overlays = [ inputs.rust-overlay.overlays.default ];
   pkgsWithRust = import inputs.nixpkgs { 
     inherit (pkgs.stdenv.hostPlatform) system; 
@@ -13,7 +12,6 @@ let
     extensions = [ "rust-src" ];
   };
 
-  # Get project metadata
   cargoToml = builtins.fromTOML (builtins.readFile ../../Cargo.toml);
   inherit (cargoToml.package) version;
 
@@ -58,14 +56,13 @@ pkgsWithRust.rustPlatform.buildRustPackage {
     rustToolchain
   ];
 
-  buildInputs = with pkgsWithRust; [
-    # Add any required libraries here
+  buildInputs = [
   ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
     pkgs.libiconv
     pkgs.darwin.apple_sdk.frameworks.Foundation
   ];
 
-  # Build features - by default just the binary, not Python bindings
+  # just the binary, don't build Python bindings
   buildFeatures = [ ];
 
   meta = with pkgs.lib; {
