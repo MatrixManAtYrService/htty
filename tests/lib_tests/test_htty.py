@@ -93,8 +93,10 @@ def test_hello_world_with_scrolling(hello_world_script: str, test_logger) -> Non
     proc.send_keys(Press.ENTER)
     assert proc.snapshot().text == ("        \nworld   \n        ")
     proc.send_keys(Press.ENTER)
+    proc.exit()  # Clean up the ht process
 
 
+@pytest.mark.wheel
 def test_hello_world_after_exit(hello_world_script: str, test_logger) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
     ht = run(cmd, rows=6, cols=8, logger=test_logger)
@@ -108,6 +110,7 @@ def test_hello_world_after_exit(hello_world_script: str, test_logger) -> None:
     assert exit_code == 0
 
 
+@pytest.mark.wheel
 def test_outputs(hello_world_script: str, test_logger) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
     ht = run(cmd, rows=4, cols=8, logger=test_logger)
@@ -131,6 +134,7 @@ def test_outputs(hello_world_script: str, test_logger) -> None:
     ht.exit()  # Clean up the ht process
 
 
+@pytest.mark.wheel
 def test_enum_keys_interface(hello_world_script: str) -> None:
     """Test that the new enum keys interface works correctly."""
     cmd = f"{sys.executable} {hello_world_script}"
@@ -138,8 +142,10 @@ def test_enum_keys_interface(hello_world_script: str) -> None:
     proc.send_keys(Press.ENTER)
 
     assert proc.snapshot().text == ("        \nworld   \n        ")
+    proc.exit()  # Clean up the ht process
 
 
+@pytest.mark.wheel
 def test_html_snapshot_with_colors(colored_hello_world_script: str) -> None:
     """Test that the new SnapshotResult provides HTML with color information."""
     cmd = f"{sys.executable} {colored_hello_world_script}"
@@ -167,6 +173,7 @@ def test_html_snapshot_with_colors(colored_hello_world_script: str) -> None:
     proc.wait(timeout=2.0)
 
 
+@pytest.mark.wheel
 def test_context_manager(hello_world_script: str) -> None:
     """Test the context manager API for automatic cleanup."""
     cmd = f"{sys.executable} {hello_world_script}"
@@ -179,6 +186,7 @@ def test_context_manager(hello_world_script: str) -> None:
         assert "world" in snapshot.text
 
 
+@pytest.mark.wheel
 def test_exit_while_subprocess_running(hello_world_script: str) -> None:
     """Test that exit() works reliably even when subprocess is still running."""
     cmd = f"{sys.executable} {hello_world_script}"
@@ -191,13 +199,16 @@ def test_exit_while_subprocess_running(hello_world_script: str) -> None:
     # Exit while subprocess is still waiting for input (should force termination)
     exit_code = proc.exit(timeout=5.0)
 
-    # Should exit cleanly
-    assert exit_code == 0
+    # Should exit with forced termination code
+    # Unix convention: process terminated by signal N returns exit code -N
+    # SIGTERM = signal 15, so terminated by SIGTERM = exit code -15
+    assert exit_code == -15
 
     # Process should be terminated
     assert proc.ht_proc.poll() is not None, "ht process should have exited"
 
 
+@pytest.mark.wheel
 def test_exit_after_subprocess_finished(hello_world_script: str) -> None:
     """Test that exit() works when subprocess has already finished."""
     cmd = f"{sys.executable} {hello_world_script}"
@@ -225,12 +236,13 @@ def test_exit_after_subprocess_finished(hello_world_script: str) -> None:
 # CLI Example Tests - These translate CLI examples to Python API usage
 
 
+@pytest.mark.wheel
 def test_vim_startup_screen() -> None:
     """Test equivalent to: htty --snapshot -- vim | grep "VIM - Vi IMproved" """
     try:
-        vim_path = os.environ["htty_TEST_VIM_TARGET"]
+        vim_path = os.environ["HTTY_TEST_VIM_TARGET"]
     except KeyError:
-        pytest.skip("htty_TEST_VIM_TARGET not set - please run in nix devshell")
+        pytest.skip("HTTY_TEST_VIM_TARGET not set - please run in nix devshell")
 
     proc = run(vim_path, rows=20, cols=50)
 
@@ -247,12 +259,13 @@ def test_vim_startup_screen() -> None:
     proc.exit()
 
 
+@pytest.mark.wheel
 def test_vim_startup_screen_context_manager() -> None:
     """Test equivalent to: htty --snapshot -- vim | grep "VIM - Vi IMproved" (using context manager)"""
     try:
-        vim_path = os.environ["htty_TEST_VIM_TARGET"]
+        vim_path = os.environ["HTTY_TEST_VIM_TARGET"]
     except KeyError:
-        pytest.skip("htty_TEST_VIM_TARGET not set - please run in nix devshell")
+        pytest.skip("HTTY_TEST_VIM_TARGET not set - please run in nix devshell")
 
     with terminal_session(vim_path, rows=20, cols=50) as proc:
         snapshot = proc.snapshot()
@@ -262,13 +275,14 @@ def test_vim_startup_screen_context_manager() -> None:
     assert improved_line == "~               VIM - Vi IMproved                 "
 
 
+@pytest.mark.wheel
 def test_vim_duplicate_line() -> None:
     """Test equivalent to: htty --rows 5 --cols 20 -k 'ihello,Escape' --snapshot
     -k 'Vyp,Escape' --snapshot -k ':q!,Enter' -- vim"""
     try:
-        vim_path = os.environ["htty_TEST_VIM_TARGET"]
+        vim_path = os.environ["HTTY_TEST_VIM_TARGET"]
     except KeyError:
-        pytest.skip("htty_TEST_VIM_TARGET not set - please run in nix devshell")
+        pytest.skip("HTTY_TEST_VIM_TARGET not set - please run in nix devshell")
 
     proc = run(vim_path, rows=5, cols=20)
 

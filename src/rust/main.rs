@@ -125,6 +125,8 @@ async fn run_event_loop(
     let mut serving = true;
     let mut last_command_time = std::time::Instant::now();
     let mut pending_waitexit: Option<std::path::PathBuf> = None;
+    let mut pending_exit = false;
+    let mut api_completed = false;
 
     // Timer for checking command channel emptiness
     let mut emptiness_check_interval = tokio::time::interval(std::time::Duration::from_millis(10));
@@ -134,10 +136,13 @@ async fn run_event_loop(
             result = output_rx.recv() => {
                 match result {
                     Some(data) => {
+                        session.emit_debug_event(&format!("outputReceived:{}bytes", data.len()));
                         session.output(String::from_utf8_lossy(&data).to_string());
+                        session.emit_debug_event("outputProcessed");
                     },
 
                     None => {
+                        session.emit_debug_event("outputChannelClosed");
                         eprintln!("Process exited, shutting down...");
                         break;
                     }
@@ -157,9 +162,15 @@ async fn run_event_loop(
             }
 
             _ = emptiness_check_interval.tick() => {
+                let emptiness_duration = last_command_time.elapsed();
+                
+                // Debug: Show current emptiness duration if we have pending operations
+                if pending_exit || pending_waitexit.is_some() {
+                    session.emit_debug_event(&format!("emptinessCheck:{}ms", emptiness_duration.as_millis()));
+                }
+                
                 // Check if we should signal waitexit due to channel emptiness
                 if let Some(fifo_path) = &pending_waitexit {
-                    let emptiness_duration = last_command_time.elapsed();
                     if emptiness_duration >= std::time::Duration::from_millis(200) {
                         // Channel has been empty for 200ms, signal waitexit
                         session.emit_debug_event("signalingWaitexit");
@@ -183,11 +194,26 @@ async fn run_event_loop(
                         pending_waitexit = None; // Clear pending state
                     }
                 }
+                
+                // Check if we should process pending exit due to channel emptiness
+                if pending_exit && emptiness_duration >= std::time::Duration::from_millis(200) {
+                    session.emit_debug_event("exitAfterQuiescence");
+                    break; // Exit the event loop after ensuring command channel is empty
+                }
             }
 
             command = command_rx.recv() => {
                 // Update last command time whenever we receive any command
                 last_command_time = std::time::Instant::now();
+                
+                match command {
+                    Some(ref cmd) => {
+                        session.emit_debug_event(&format!("commandReceived:{:?}", cmd));
+                    }
+                    None => {
+                        session.emit_debug_event("commandChannelClosed");
+                    }
+                }
                 
                 match command {
                     Some(Command::Input(seqs)) => {
@@ -196,7 +222,9 @@ async fn run_event_loop(
                     }
 
                     Some(Command::Snapshot) => {
+                        session.emit_debug_event("snapshotCommandReceived");
                         session.snapshot();
+                        session.emit_debug_event("snapshotCommandCompleted");
                     }
 
                     Some(Command::Resize(cols, rows)) => {
@@ -238,10 +266,11 @@ async fn run_event_loop(
                     }
 
                     Some(Command::Exit) => {
-                        eprintln!("Exit command received, signaling waitexit and shutting down...");
-                        // Send a special debug event to signal that exit was requested
-                        session.emit_debug_event("exitRequested");
-                        break;
+                        session.emit_debug_event("exitCommandReceived");
+                        // Don't exit immediately - wait for command channel to be empty for 200ms
+                        // This ensures any pending commands (like snapshot) are processed first
+                        pending_exit = true;
+                        session.emit_debug_event("exitCommandQueued");
                     }
 
                     None => {
@@ -263,9 +292,12 @@ async fn run_event_loop(
                 }
             }
 
-            _ = &mut api_handle => {
-                eprintln!("API handle closed, shutting down...");
-                break;
+            _ = &mut api_handle, if !api_completed => {
+                api_completed = true;
+                session.emit_debug_event("apiHandleClosed");
+                // API closed (stdin closed) but don't exit immediately
+                // Keep processing commands from the buffer - they might already be queued
+                session.emit_debug_event("apiClosedContinuingToProcessCommands");
             }
         }
     }

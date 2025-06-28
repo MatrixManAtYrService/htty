@@ -7,7 +7,9 @@ CLI interface for htty providing two entry points:
 
 import argparse
 import json
+import logging
 import os
+import queue
 import subprocess
 import sys
 import time
@@ -93,6 +95,11 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
         help="Delimiter for parsing keys (default: ',')",
     )
     parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug mode: show ht events and subscribe to debug events",
+    )
+    parser.add_argument(
         "command",
         nargs="*",
         help="Command to run (must be preceded by --)",
@@ -133,16 +140,36 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
             actions.append(("snapshot", None))
 
     try:
+        # Set up debug logger if requested
+        debug_logger = None
+        extra_subscribes = None
+        
+        if args.debug:
+            # Create a debug logger that outputs to stderr
+            debug_logger = logging.getLogger("htty.debug")
+            debug_logger.setLevel(logging.DEBUG)
+            
+            # Add debug handler if not already present
+            if not debug_logger.handlers:
+                handler = logging.StreamHandler(sys.stderr)
+                handler.setLevel(logging.DEBUG)
+                formatter = logging.Formatter('DEBUG: %(message)s')
+                handler.setFormatter(formatter)
+                debug_logger.addHandler(handler)
+            
+            # Subscribe to debug events
+            extra_subscribes = ["debug"]
+        
         # Start the ht process  
         proc = run(
             command,
             rows=args.rows,
             cols=args.cols,
             no_exit=True,
-            start_on_output=True
+            logger=debug_logger,
+            extra_subscribes=extra_subscribes
         )
         
-        # Small delay to let the process start
         time.sleep(0.1)
         
         # Process actions in order
@@ -150,6 +177,11 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
             if action_type == "keys" and action_value:
                 keys = parse_keys(action_value, args.delimiter)
                 if keys:
+                    # Check if subprocess has completed before sending keys
+                    if proc.subprocess_completed or proc.subprocess_exited:
+                        if debug_logger:
+                            debug_logger.warning(f"Subprocess has completed, skipping keys: {action_value}")
+                        continue
                     proc.send_keys(keys)
                     time.sleep(0.05)  # Small delay after sending keys
             elif action_type == "snapshot":

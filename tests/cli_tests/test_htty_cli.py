@@ -76,6 +76,7 @@ def terminal_contents(*, actual_snapshots: str, expected_patterns: List[Pattern]
     return True
 
 
+@pytest.mark.wheel
 def test_echo_hello() -> None:
     cmd = [
         *(sys.executable, "-m"),
@@ -93,6 +94,7 @@ def test_echo_hello() -> None:
     assert actual_output == expected_output
 
 
+@pytest.mark.wheel
 def test_keys_after_subproc_exit() -> None:
     cmd = [
         *(sys.executable, "-m"),
@@ -133,6 +135,7 @@ def greeter_script() -> Generator[str, None, None]:
         pass
 
 
+@pytest.mark.wheel
 def test_send_keys(greeter_script: str) -> None:
     cmd = [
         *(sys.executable, "-m"),
@@ -151,6 +154,7 @@ def test_send_keys(greeter_script: str) -> None:
     assert actual_output == expected_output
 
 
+@pytest.mark.wheel
 def test_vim() -> None:
     try:
         vim_path = os.environ["HTTY_TEST_VIM_TARGET"]
@@ -242,6 +246,7 @@ def test_vim() -> None:
     )
 
 
+@pytest.mark.wheel
 def test_empty_line_preservation():
     """Test that CLI preserves empty lines at the beginning of output."""
     import os

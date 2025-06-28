@@ -184,6 +184,7 @@ class HTProcess:
         self.cols = cols
         self.no_exit = no_exit
         self.subprocess_exited = False
+        self.subprocess_completed = False  # Set earlier when command completion is detected
         
         # Use provided logger or fall back to default
         self.logger = logger or default_logger
@@ -500,7 +501,7 @@ def run(
     event_queue: queue.Queue = queue.Queue()
 
     # Build the ht command with event subscription
-    base_subscribes = ["init", "snapshot", "output", "resize", "pid", "exitCode"]
+    base_subscribes = ["init", "snapshot", "output", "resize", "pid", "exitCode", "commandCompleted"]
     if extra_subscribes:
         base_subscribes.extend(extra_subscribes)
     
@@ -574,8 +575,13 @@ def run(
                             ht_process.subprocess_controller.exit_code = exit_code
                 elif event["type"] == "pid":
                     thread_logger.debug(f"ht process {ht_proc.pid} subprocess PID: {event.get('data', {}).get('pid')}")
+                elif event["type"] == "commandCompleted":
+                    # Command has completed - this is the reliable signal that subprocess finished
+                    ht_process.subprocess_completed = True
                 elif event["type"] == "debug":
                     thread_logger.debug(f"ht process {ht_proc.pid} debug: {event.get('data', {})}")
+                    # Note: We no longer rely on debug events for subprocess_completed
+                    # The commandCompleted event (above) is the reliable source
             except json.JSONDecodeError as e:
                 # Only log raw stdout when we can't parse it as JSON - this indicates an unexpected message
                 thread_logger.warning(f"ht process {ht_proc.pid} non-JSON stdout: {line} (error: {e})")

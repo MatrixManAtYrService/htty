@@ -44,7 +44,36 @@ pub async fn start(
                         }
                     }
 
-                    None => break
+                    None => {
+                        // stdin closed - drain any remaining commands in the channel
+                        loop {
+                            match input_rx.try_recv() {
+                                Ok(line) => {
+                                    match parse_line(&line) {
+                                        Ok(command) => {
+                                            if command_tx.send(command).await.is_err() {
+                                                break; // command channel closed, time to exit
+                                            }
+                                        },
+                                        Err(e) => eprintln!("command parse error: {e}"),
+                                    }
+                                }
+                                Err(_) => break, // no more commands in input channel
+                            }
+                        }
+                        
+                        // stdin is closed but keep the API task alive and command channel open
+                        // Wait for the main event loop to close the command channel when it's truly done
+                        // This prevents race conditions where commands are dropped due to stdin closure
+                        loop {
+                            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                            // Check if command channel is closed (main event loop is shutting down)
+                            if command_tx.is_closed() {
+                                break;
+                            }
+                        }
+                        break;
+                    }
                 }
             }
 
@@ -77,6 +106,10 @@ pub async fn start(
                     }
 
                     Some(Ok(e @ Debug(_, _))) if sub.debug => {
+                        println!("{}", e.to_json().to_string());
+                    }
+
+                    Some(Ok(e @ CommandCompleted(_))) if sub.command_completed => {
                         println!("{}", e.to_json().to_string());
                     }
 
