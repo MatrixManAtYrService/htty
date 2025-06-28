@@ -3,9 +3,9 @@
 
 let
   overlays = [ inputs.rust-overlay.overlays.default ];
-  pkgsWithRust = import inputs.nixpkgs { 
-    inherit (pkgs.stdenv.hostPlatform) system; 
-    inherit overlays; 
+  pkgsWithRust = import inputs.nixpkgs {
+    inherit (pkgs.stdenv.hostPlatform) system;
+    inherit overlays;
   };
 
   rustToolchain = pkgsWithRust.rust-bin.stable.latest.default.override {
@@ -25,20 +25,20 @@ let
         projectRoot = toString ../..;
         relPath = pkgs.lib.removePrefix projectRoot (toString path);
       in
-        # Include Rust source files
-        (pkgs.lib.hasPrefix "/src/rust" relPath) ||
-        # Include assets directory (needed by rust-embed)
-        (pkgs.lib.hasPrefix "/assets" relPath) ||
-        # Include directory structure
-        (relPath == "/src/rust" && type == "directory") ||
-        (relPath == "/src" && type == "directory") ||
-        (relPath == "/assets" && type == "directory") ||
-        # Include Cargo files  
-        (baseName == "Cargo.toml") ||
-        (baseName == "Cargo.lock") ||
-        # Include license and readme
-        (baseName == "LICENSE") ||
-        (baseName == "README.md");
+      # Include Rust source files
+      (pkgs.lib.hasPrefix "/src/rust" relPath) ||
+      # Include assets directory (needed by rust-embed)
+      (pkgs.lib.hasPrefix "/assets" relPath) ||
+      # Include directory structure
+      (relPath == "/src/rust" && type == "directory") ||
+      (relPath == "/src" && type == "directory") ||
+      (relPath == "/assets" && type == "directory") ||
+      # Include Cargo files
+      (baseName == "Cargo.toml") ||
+      (baseName == "Cargo.lock") ||
+      # Include license and readme
+      (baseName == "LICENSE") ||
+      (baseName == "README.md");
   };
 
 in
@@ -56,8 +56,7 @@ pkgsWithRust.rustPlatform.buildRustPackage {
     rustToolchain
   ];
 
-  buildInputs = [
-  ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+  buildInputs = pkgs.lib.optionals pkgs.stdenv.isDarwin [
     pkgs.libiconv
     pkgs.darwin.apple_sdk.frameworks.Foundation
   ];

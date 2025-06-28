@@ -12,16 +12,16 @@ let
         projectRoot = toString ../..;
         relPath = pkgs.lib.removePrefix projectRoot (toString path);
       in
-        # Include Python source files  
-        (pkgs.lib.hasPrefix "/src/python" relPath) ||
-        # Include directory structure
-        (relPath == "/src/python" && type == "directory") ||
-        (relPath == "/src" && type == "directory") ||
-        # Include pyproject.toml for reference
-        (baseName == "pyproject.toml") ||
-        # Include license and readme
-        (baseName == "LICENSE") ||
-        (baseName == "README.md");
+      # Include Python source files
+      (pkgs.lib.hasPrefix "/src/python" relPath) ||
+      # Include directory structure
+      (relPath == "/src/python" && type == "directory") ||
+      (relPath == "/src" && type == "directory") ||
+      # Include pyproject.toml for reference
+      (baseName == "pyproject.toml") ||
+      # Include license and readme
+      (baseName == "LICENSE") ||
+      (baseName == "README.md");
   };
 
   # Load workspace from root pyproject.toml (which has htty + ansi2html dependencies)
@@ -35,7 +35,7 @@ let
   }).overrideScope (
     pkgs.lib.composeManyExtensions [
       inputs.pyproject-build-systems.overlays.default
-      (workspace.mkPyprojectOverlay { 
+      (workspace.mkPyprojectOverlay {
         sourcePreference = "wheel";
       })
       # Override htty to use Python source only (no Rust compilation)
@@ -43,26 +43,26 @@ let
         htty = prev.htty.overrideAttrs (old: {
           # Replace source with our Python-only source
           src = pythonSourceOnly;
-          
+
           # Don't build anything, just copy Python source
           format = "other";
-          
+
           # Simple copy operation
           installPhase = ''
             mkdir -p $out/${final.python.sitePackages}
-            
+
             # Copy Python source directly
             cp -r src/python/htty $out/${final.python.sitePackages}/
-            
+
             # Make sure directories are readable
             find $out -type d -exec chmod 755 {} \;
             find $out -type f -exec chmod 644 {} \;
           '';
-          
+
           # Don't run any build steps
           dontConfigure = true;
           dontBuild = true;
-          
+
           meta = old.meta // {
             description = "htty Python source (no Rust binary)";
           };

@@ -9,9 +9,9 @@ let
 
   # Get overlays for Rust
   overlays = [ inputs.rust-overlay.overlays.default ];
-  pkgsWithRust = import inputs.nixpkgs { 
-    inherit (pkgs.stdenv.hostPlatform) system; 
-    inherit overlays; 
+  pkgsWithRust = import inputs.nixpkgs {
+    inherit (pkgs.stdenv.hostPlatform) system;
+    inherit overlays;
   };
 
   rustToolchain = pkgsWithRust.rust-bin.stable.latest.default.override {
@@ -38,37 +38,36 @@ pkgsWithRust.stdenv.mkDerivation {
     rustPlatform.cargoSetupHook
   ];
 
-  buildInputs = [
-  ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+  buildInputs = pkgs.lib.optionals pkgs.stdenv.isDarwin [
     pkgs.libiconv
     pkgs.darwin.apple_sdk.frameworks.Foundation
   ];
 
   buildPhase = ''
     runHook preBuild
-    
+
     # Build just the CLI binary (no Python bindings)
     cargo build --release --bin ht
-    
+
     runHook postBuild
   '';
 
   installPhase = ''
-    runHook preInstall
-    
-    # Install the Rust binary
-    mkdir -p $out/bin
-    cp target/release/ht $out/bin/
-    
-    # Create htty CLI wrapper that uses the Python library environment
-    cat > $out/bin/htty << 'EOF'
-#!/usr/bin/env bash
-# htty CLI - synchronous batch mode for scripting
-exec ${httyPylib}/bin/python -m htty "$@"
-EOF
-    chmod +x $out/bin/htty
-    
-    runHook postInstall
+        runHook preInstall
+
+        # Install the Rust binary
+        mkdir -p $out/bin
+        cp target/release/ht $out/bin/
+
+        # Create htty CLI wrapper that uses the Python library environment
+        cat > $out/bin/htty << 'EOF'
+    #!/usr/bin/env bash
+    # htty CLI - synchronous batch mode for scripting
+    exec ${httyPylib}/bin/python -m htty "$@"
+    EOF
+        chmod +x $out/bin/htty
+
+        runHook postInstall
   '';
 
   meta = with pkgs.lib; {

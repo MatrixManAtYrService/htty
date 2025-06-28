@@ -12,7 +12,7 @@ use anyhow::{Context, Result};
 use command::Command;
 use nix::libc;
 use session::Session;
-use std::io::{BufRead, Write};
+use std::io::BufRead;
 use std::net::{SocketAddr, TcpListener};
 use std::path::PathBuf;
 use tokio::{sync::mpsc, task::JoinHandle};
@@ -58,11 +58,9 @@ async fn handle_waitexit(signal_file: PathBuf) -> Result<()> {
     // Parent will detect FIFO existence and know command is done
     if let Ok(file) = std::fs::File::open(&signal_file) {
         let reader = std::io::BufReader::new(file);
-        for line in reader.lines() {
-            if let Ok(line) = line {
-                if line.trim() == "exit" {
-                    break;
-                }
+        for line in reader.lines().map_while(Result::ok) {
+            if line.trim() == "exit" {
+                break;
             }
         }
     }
@@ -111,6 +109,7 @@ async fn start_http_api(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn run_event_loop(
     mut output_rx: mpsc::Receiver<Vec<u8>>,
     input_tx: mpsc::Sender<Vec<u8>>,
@@ -236,34 +235,13 @@ async fn run_event_loop(
                         session.emit_debug_event(&message);
                     }
 
-                    Some(Command::CommandCompleted(fifo_path)) => {
+                    Some(Command::Completed(fifo_path)) => {
                         session.emit_command_completed();
                         // Set up pending waitexit - it will be triggered when channel is empty for 200ms
                         pending_waitexit = Some(fifo_path);
                         session.emit_debug_event("commandCompletedReceived");
                     }
 
-                    Some(Command::SignalWaitexit(fifo_path)) => {
-                        // This is the old direct signaling - we'll keep it for now but it shouldn't be used
-                        session.emit_debug_event("signalingWaitexit");
-                        
-                        // Write "exit" to FIFO to signal waitexit to complete
-                        if fifo_path.exists() {
-                            if let Ok(mut file) = std::fs::OpenOptions::new()
-                                .write(true)
-                                .open(&fifo_path) 
-                            {
-                                use std::io::Write;
-                                let _ = writeln!(file, "exit");
-                                let _ = file.flush();
-                                session.emit_debug_event("exitSignalSent");
-                            } else {
-                                session.emit_debug_event("exitSignalFailed");
-                            }
-                        } else {
-                            session.emit_debug_event("fifoMissingForExit");
-                        }
-                    }
 
                     Some(Command::Exit) => {
                         session.emit_debug_event("exitCommandReceived");

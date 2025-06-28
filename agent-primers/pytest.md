@@ -20,7 +20,7 @@ def test_python_logic():
     """Pure Python test - no binary needed"""
     pass
 
-@pytest.mark.wheel  
+@pytest.mark.wheel
 def test_terminal_interaction():
     """Integration test - needs ht binary"""
     pass
@@ -58,7 +58,7 @@ def test_terminal_interaction():
 nix develop .#pytest-sdist --command pytest -vs -m sdist
 ```
 
-### Running Integration Tests Only  
+### Running Integration Tests Only
 ```bash
 # Full environment testing - 22s build time
 nix develop .#pytest-wheel --command pytest -vs -m wheel
@@ -203,4 +203,4 @@ When adding new tests:
 
 3. **Run** the test in its intended environment to verify it works
 
-This strategy gives us the best of both worlds: lightning-fast unit tests for rapid development and comprehensive integration tests that verify real-world behavior. 
+This strategy gives us the best of both worlds: lightning-fast unit tests for rapid development and comprehensive integration tests that verify real-world behavior.

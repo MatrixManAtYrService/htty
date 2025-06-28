@@ -28,7 +28,7 @@ We use **pytest marks** to map tests to appropriate environments:
 # Fast unit tests (Python-only, 3s builds)
 nix develop .#pytest-sdist --command pytest -vs -m sdist
 
-# Integration tests (with ht binary, 22s builds)  
+# Integration tests (with ht binary, 22s builds)
 nix develop .#pytest-wheel --command pytest -vs -m wheel
 
 # Pure pytest environment (no htty packages)
@@ -48,7 +48,7 @@ We have four specialized pytest environments, each designed for specific testing
 - **No htty**: Neither htty Python module nor ht binary
 - **Test restriction**: Use `tests/env_tests/` only to avoid import failures
 
-#### pytest-sdist  
+#### pytest-sdist
 - **Purpose**: Python-only unit testing with mocked binaries
 - **Use case**: Fast iteration on Python logic
 - **Contains**: htty Python-only package (hatchling build)
@@ -72,7 +72,7 @@ We have four specialized pytest environments, each designed for specific testing
 ### Why This Works
 
 1. **No Stale Code**: Every test run rebuilds the environment from scratch
-2. **Testing Reality**: You test the exact same packages that users receive  
+2. **Testing Reality**: You test the exact same packages that users receive
 3. **Immediate Feedback**: Code changes in Rust (`src/rust/`) or Python (`src/python/`) are reflected instantly
 4. **Dependency Isolation**: Test dependencies (pytest) are separate from the library being tested
 5. **Shared Function**: All environments use `makePytestShell` for consistency
@@ -82,7 +82,7 @@ We have four specialized pytest environments, each designed for specific testing
 All pytest environments use a shared function `makePytestShell` from `nix/lib/pytest-shell.nix`:
 
 - **pytest-empty**: `makePytestShell { packages = []; }`
-- **pytest-sdist**: `makePytestShell { packages = [htty-py-sdist]; }`  
+- **pytest-sdist**: `makePytestShell { packages = [htty-py-sdist]; }`
 - **pytest-wheel**: `makePytestShell { packages = [htty-pylib]; extraBuildInputs = [testVim]; }`
 
 This ensures consistent test environment setup while allowing environment-specific customization.
@@ -121,7 +121,7 @@ nix develop .#pytest-wheel
 
 The build system handles:
 - Rebuilding the Rust binary when `src/rust/` changes
-- Rebuilding the Python wheel when `src/python/` changes  
+- Rebuilding the Python wheel when `src/python/` changes
 - Creating fresh environments with updated code
 - No manual build steps required
 
@@ -130,7 +130,7 @@ The build system handles:
 When you modify source code, here's what gets rebuilt automatically:
 
 - **Change `src/rust/*.rs`** → Rebuilds: ht → htty-wheel → htty-pylib → pytest environments
-- **Change `src/python/**/*.py`** → Rebuilds: htty-wheel → htty-pylib → pytest environments  
+- **Change `src/python/**/*.py`** → Rebuilds: htty-wheel → htty-pylib → pytest environments
 - **Change `tests/pyproject.toml`** → Rebuilds: test dependencies in pytest environments
 
 This ensures you always test fresh code and never encounter stale virtual environment issues.
@@ -169,14 +169,14 @@ nix develop .#pytest-wheel --command pytest -vs -m wheel
 **Why restrict test suites?** Some environments lack Python setup (like `pytest-empty` and `pytest-cli`), so running tests that import htty in these environments will fail. The marks ensure tests only run in compatible environments:
 
 - **`pytest-empty`**: No htty packages - restrict to `tests/env_tests/` to avoid import failures
-- **`pytest-cli`**: CLI tools only, no Python htty - restrict to `tests/cli_tests/` and `tests/env_tests/`  
+- **`pytest-cli`**: CLI tools only, no Python htty - restrict to `tests/cli_tests/` and `tests/env_tests/`
 - **`pytest-sdist`**: Python htty only - can run all test suites
 - **`pytest-wheel`**: Full environment - can run all test suites
 
 ### Writing Tests
 
 - Put tests in `tests/lib_tests/` for Python library functionality
-- Put tests in `tests/py_unit_tests/` for Python-only unit tests  
+- Put tests in `tests/py_unit_tests/` for Python-only unit tests
 - Put tests in `tests/external_tests/` for nix package integration tests
 - Put tests in `tests/env_tests/` for environment verification tests
 - Put tests in `tests/cli_tests/` for CLI-only functionality tests
@@ -215,7 +215,7 @@ tests/external_tests/  # External nix package integration tests
 tests/env_tests/       # Environment verification tests
 tests/cli_tests/       # CLI-only functionality tests (if exists)
 py-envs/lib/           # Production Python dependencies
-py-envs/sdist/         # Python-only (no Rust) dependencies  
+py-envs/sdist/         # Python-only (no Rust) dependencies
 tests/                 # Test-only Python dependencies
 nix/packages/          # Build system (see packaging.md)
 nix/devshells/         # Development environments

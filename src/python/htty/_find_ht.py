@@ -1,6 +1,7 @@
 """
 Find the ht binary that was installed with this package.
 """
+
 from __future__ import annotations
 
 import os
@@ -40,6 +41,7 @@ def find_ht_bin() -> str:
 
     # Fallback: search in PATH (useful for Nix environments and other non-standard setups)
     import shutil
+
     path_ht = shutil.which("ht")
     if path_ht and os.path.isfile(path_ht):
         return path_ht

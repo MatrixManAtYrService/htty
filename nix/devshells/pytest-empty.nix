@@ -8,7 +8,7 @@ in
 
 lib.makePytestShell {
   inherit pkgs system perSystem;
-  
+
   # No packages - pure pytest environment
-  packages = [];
+  packages = [ ];
 }

@@ -8,7 +8,7 @@ in
 
 lib.makePytestShell {
   inherit pkgs system perSystem;
-  
+
   # Use htty-cli which provides both ht and htty commands without Python module
   packages = [ perSystem.self.htty-cli ];
 }

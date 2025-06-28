@@ -18,19 +18,18 @@ import time
 from contextlib import contextmanager
 from typing import Any, Dict, List, Optional, Union
 
-from .html_utils import simple_ansi_to_html
-from .keys import KeyInput, keys_to_strings, Press
 from ._find_ht import find_ht_bin
-
+from .html_utils import simple_ansi_to_html
+from .keys import KeyInput, keys_to_strings
 
 # Get default logger for this module
 default_logger = logging.getLogger(__name__)
 
 __all__ = [
-    "SnapshotResult", 
-    "SubprocessController", 
-    "HTProcess", 
-    "run", 
+    "SnapshotResult",
+    "SubprocessController",
+    "HTProcess",
+    "run",
     "terminal_session",
     "get_ht_help",
     "DEFAULT_SLEEP_AFTER_KEYS",
@@ -56,12 +55,12 @@ MAX_SNAPSHOT_RETRIES = 10
 
 class SnapshotResult:
     """Result of taking a terminal snapshot"""
-    
+
     def __init__(self, text: str, html: str, raw_seq: str):
         self.text = text
         self.html = html
         self.raw_seq = raw_seq
-    
+
     def __repr__(self):
         return f"SnapshotResult(text={self.text!r}, html=<{len(self.html)} chars>, raw_seq=<{len(self.raw_seq)} chars>)"
 
@@ -107,10 +106,10 @@ class SubprocessController:
     def wait(self, timeout: Optional[float] = 5.0) -> Optional[int]:
         """
         Wait for the subprocess to finish.
-        
+
         Args:
             timeout: Maximum time to wait (in seconds). Defaults to 5.0 seconds.
-            
+
         Returns:
             The exit code of the subprocess, or None if timeout reached
         """
@@ -121,11 +120,11 @@ class SubprocessController:
         while True:
             try:
                 os.kill(self.pid, 0)  # Check if process is still running
-                
+
                 # Check timeout
                 if timeout is not None and (time.time() - start_time) > timeout:
                     return None  # Timeout reached
-                    
+
                 time.sleep(DEFAULT_SLEEP_AFTER_KEYS)
             except OSError:
                 # Process has exited
@@ -148,7 +147,7 @@ class SubprocessController:
                     # Couldn't get exit code, use reasonable default
                     if self.exit_code is None:
                         self.exit_code = 0 if not self._termination_initiated else 137
-                        
+
                 return self.exit_code
 
 
@@ -185,15 +184,18 @@ class HTProcess:
         self.no_exit = no_exit
         self.subprocess_exited = False
         self.subprocess_completed = False  # Set earlier when command completion is detected
-        
+
         # Use provided logger or fall back to default
         self.logger = logger or default_logger
         self.logger.debug(f"HTProcess created: ht_proc.pid={ht_proc.pid}, command={command}")
-        
+
     def __del__(self):
         """Destructor to warn about uncleaned processes."""
-        if hasattr(self, 'ht_proc') and self.ht_proc and self.ht_proc.poll() is None:
-            self.logger.warning(f"HTProcess being garbage collected with running ht process (PID: {self.ht_proc.pid}). This may cause resource leaks!")
+        if hasattr(self, "ht_proc") and self.ht_proc and self.ht_proc.poll() is None:
+            self.logger.warning(
+                f"HTProcess being garbage collected with running ht process (PID: {self.ht_proc.pid}). "
+                f"This may cause resource leaks!"
+            )
             # Try emergency cleanup
             try:
                 self.ht_proc.terminate()
@@ -207,26 +209,26 @@ class HTProcess:
     def send_keys(self, keys: Union[KeyInput, List[KeyInput]]) -> None:
         """
         Send keys to the terminal.
-        
+
         Since we use --wait-for-output, this is much more reliable than the original.
         """
         key_strings = keys_to_strings(keys)
         message = json.dumps({"type": "sendKeys", "keys": key_strings})
-        
+
         self.logger.debug(f"Sending keys: {message}")
 
         if self.ht_proc.stdin is not None:
             try:
                 self.ht_proc.stdin.write(message + "\n")
                 self.ht_proc.stdin.flush()
-                self.logger.debug(f"Keys sent successfully")
+                self.logger.debug("Keys sent successfully")
             except (BrokenPipeError, OSError) as e:
                 self.logger.error(f"Failed to send keys: {e}")
                 self.logger.error(f"ht process poll result: {self.ht_proc.poll()}")
                 raise
         else:
-            self.logger.error(f"ht process stdin is None")
-        
+            self.logger.error("ht process stdin is None")
+
         time.sleep(DEFAULT_SLEEP_AFTER_KEYS)
 
     def snapshot(self, timeout: float = DEFAULT_SNAPSHOT_TIMEOUT) -> SnapshotResult:
@@ -243,7 +245,7 @@ class HTProcess:
             if self.ht_proc.stdin is not None:
                 self.ht_proc.stdin.write(message + "\n")
                 self.ht_proc.stdin.flush()
-                self.logger.debug(f"Snapshot request sent successfully")
+                self.logger.debug("Snapshot request sent successfully")
             else:
                 raise RuntimeError("ht process stdin is not available")
         except BrokenPipeError as e:
@@ -306,31 +308,31 @@ class HTProcess:
     def exit(self, timeout: float = DEFAULT_EXIT_TIMEOUT) -> int:
         """
         Exit the ht process, ensuring clean shutdown.
-        
+
         Uses different strategies based on subprocess state:
         - If subprocess already exited (exitCode event received): graceful shutdown via exit command
         - If subprocess still running: forced termination with SIGTERM then SIGKILL
         """
         self.logger.debug(f"Exiting HTProcess: ht_proc.pid={self.ht_proc.pid}")
-        
+
         # Check if we've already received the exitCode event
         if self.subprocess_exited:
-            self.logger.debug(f"Subprocess already exited (exitCode event received), attempting graceful shutdown")
+            self.logger.debug("Subprocess already exited (exitCode event received), attempting graceful shutdown")
             return self._graceful_exit(timeout)
         else:
-            self.logger.debug(f"Subprocess has not exited yet, checking current state")
-            
+            self.logger.debug("Subprocess has not exited yet, checking current state")
+
             # Give a brief moment for any pending exitCode event to arrive
             brief_wait_start = time.time()
             while time.time() - brief_wait_start < 0.5:  # Wait up to 500ms
                 if self.subprocess_exited:
-                    self.logger.debug(f"Subprocess exited during brief wait, attempting graceful shutdown")
+                    self.logger.debug("Subprocess exited during brief wait, attempting graceful shutdown")
                     return self._graceful_exit(timeout)
                 time.sleep(0.01)
-            
-            self.logger.debug(f"Subprocess still running after brief wait, using forced termination")
+
+            self.logger.debug("Subprocess still running after brief wait, using forced termination")
             return self._forced_exit(timeout)
-    
+
     def _graceful_exit(self, timeout: float) -> int:
         """
         Graceful exit: subprocess has completed, so we can send exit command to ht process.
@@ -338,7 +340,7 @@ class HTProcess:
         # Send exit command to ht process
         message = json.dumps({"type": "exit"})
         self.logger.debug(f"Sending exit command to ht process {self.ht_proc.pid}: {message}")
-        
+
         try:
             if self.ht_proc.stdin is not None:
                 self.ht_proc.stdin.write(message + "\n")
@@ -349,7 +351,9 @@ class HTProcess:
             else:
                 self.logger.debug(f"ht process {self.ht_proc.pid} stdin is None, cannot send exit command")
         except (BrokenPipeError, OSError) as e:
-            self.logger.debug(f"Failed to send exit command to ht process {self.ht_proc.pid}: {e} (process may have already exited)")
+            self.logger.debug(
+                f"Failed to send exit command to ht process {self.ht_proc.pid}: {e} (process may have already exited)"
+            )
             pass
 
         # Wait for the ht process to finish gracefully
@@ -357,7 +361,10 @@ class HTProcess:
         while self.ht_proc.poll() is None:
             if time.time() - start_time > timeout:
                 # Graceful exit timed out, fall back to forced termination
-                self.logger.warning(f"ht process {self.ht_proc.pid} did not exit gracefully within timeout, falling back to forced termination")
+                self.logger.warning(
+                    f"ht process {self.ht_proc.pid} did not exit gracefully within timeout, "
+                    f"falling back to forced termination"
+                )
                 return self._forced_exit(timeout)
             time.sleep(DEFAULT_SLEEP_AFTER_KEYS)
 
@@ -367,7 +374,7 @@ class HTProcess:
 
         self.logger.debug(f"HTProcess exited gracefully: exit_code={self.exit_code}")
         return self.exit_code
-    
+
     def _forced_exit(self, timeout: float) -> int:
         """
         Forced exit: subprocess may still be running, so we need to terminate everything forcefully.
@@ -382,7 +389,9 @@ class HTProcess:
                     self.subprocess_controller.wait(timeout=DEFAULT_SUBPROCESS_WAIT_TIMEOUT)
                     self.logger.debug(f"Subprocess {self.subprocess_controller.pid} terminated successfully")
                 except Exception:
-                    self.logger.warning(f"Subprocess {self.subprocess_controller.pid} did not terminate gracefully, killing")
+                    self.logger.warning(
+                        f"Subprocess {self.subprocess_controller.pid} did not terminate gracefully, killing"
+                    )
                     try:
                         self.subprocess_controller.kill()
                     except Exception:
@@ -393,7 +402,7 @@ class HTProcess:
 
         # Step 2: Force terminate the ht process with SIGTERM, then SIGKILL if needed
         self.logger.debug(f"Force terminating ht process {self.ht_proc.pid}")
-        
+
         # Try SIGTERM first
         try:
             self.ht_proc.terminate()
@@ -406,13 +415,15 @@ class HTProcess:
         while self.ht_proc.poll() is None:
             if time.time() - start_time > timeout:
                 # SIGTERM timeout, try SIGKILL
-                self.logger.warning(f"ht process {self.ht_proc.pid} did not terminate with SIGTERM within timeout, sending SIGKILL")
+                self.logger.warning(
+                    f"ht process {self.ht_proc.pid} did not terminate with SIGTERM within timeout, sending SIGKILL"
+                )
                 try:
                     self.ht_proc.kill()
                     self.logger.debug(f"Sent SIGKILL to ht process {self.ht_proc.pid}")
                 except Exception as e:
                     self.logger.debug(f"Failed to send SIGKILL to ht process {self.ht_proc.pid}: {e}")
-                
+
                 # Wait for SIGKILL to take effect
                 kill_start_time = time.time()
                 while self.ht_proc.poll() is None:
@@ -460,7 +471,6 @@ class HTProcess:
             return None
 
 
-
 def get_ht_help() -> str:
     """Get the help output from the ht binary."""
     ht_binary = find_ht_bin()
@@ -483,14 +493,14 @@ def run(
 ) -> HTProcess:
     """
     Run a command using the 'ht' tool and return a HTProcess object.
-    
+
     This version uses --wait-for-output by default to avoid race conditions.
     """
     # Use provided logger or fall back to default
     process_logger = logger or default_logger
-    
+
     ht_binary = find_ht_bin()
-    
+
     # Handle both string commands and pre-split argument lists
     if isinstance(command, str):
         cmd_args = command.split()
@@ -504,7 +514,7 @@ def run(
     base_subscribes = ["init", "snapshot", "output", "resize", "pid", "exitCode", "commandCompleted"]
     if extra_subscribes:
         base_subscribes.extend(extra_subscribes)
-    
+
     ht_cmd_args = [
         ht_binary,
         "--subscribe",
@@ -524,7 +534,7 @@ def run(
 
     # Launch ht with debug logging
     process_logger.debug(f"Launching: {' '.join(ht_cmd_args)}")
-    
+
     ht_proc = subprocess.Popen(
         ht_cmd_args,
         stdin=subprocess.PIPE,
@@ -533,7 +543,7 @@ def run(
         text=True,
         bufsize=1,
     )
-    
+
     process_logger.debug(f"ht started: PID {ht_proc.pid}")
 
     # Create a reader thread to capture ht output
@@ -544,17 +554,17 @@ def run(
         thread_logger: logging.Logger,
     ) -> None:
         thread_logger.debug(f"Reader thread started for ht process {ht_proc.pid}")
-        
+
         while True:
             if ht_proc.stdout is None:
                 thread_logger.warning(f"ht process {ht_proc.pid} stdout is None, exiting reader thread")
                 break
-                
+
             line = ht_proc.stdout.readline()
             if not line:
                 thread_logger.debug(f"ht process {ht_proc.pid} stdout closed, exiting reader thread")
                 break
-                
+
             line = line.strip()
             if not line:
                 continue
@@ -567,7 +577,9 @@ def run(
                 if event["type"] == "output":
                     ht_process.output_events.append(event)
                 elif event["type"] == "exitCode":
-                    thread_logger.debug(f"ht process {ht_proc.pid} subprocess exited with code: {event.get('data', {}).get('exitCode')}")
+                    thread_logger.debug(
+                        f"ht process {ht_proc.pid} subprocess exited with code: {event.get('data', {}).get('exitCode')}"
+                    )
                     ht_process.subprocess_exited = True
                     if hasattr(ht_process, "subprocess_controller"):
                         exit_code = event.get("data", {}).get("exitCode")
@@ -586,7 +598,7 @@ def run(
                 # Only log raw stdout when we can't parse it as JSON - this indicates an unexpected message
                 thread_logger.warning(f"ht process {ht_proc.pid} non-JSON stdout: {line} (error: {e})")
                 pass
-                
+
         thread_logger.debug(f"Reader thread exiting for ht process {ht_proc.pid}")
 
     # Create an HTProcess instance
@@ -601,32 +613,34 @@ def run(
     )
 
     # Start the reader thread for stdout
-    stdout_thread = threading.Thread(target=reader_thread, args=(ht_proc, event_queue, process, process_logger), daemon=True)
+    stdout_thread = threading.Thread(
+        target=reader_thread, args=(ht_proc, event_queue, process, process_logger), daemon=True
+    )
     stdout_thread.start()
-    
+
     # Start a stderr reader thread
     def stderr_reader_thread(ht_proc: subprocess.Popen, thread_logger: logging.Logger) -> None:
         thread_logger.debug(f"Stderr reader thread started for ht process {ht_proc.pid}")
-        
+
         while True:
             if ht_proc.stderr is None:
                 thread_logger.warning(f"ht process {ht_proc.pid} stderr is None, exiting stderr reader thread")
                 break
-                
+
             line = ht_proc.stderr.readline()
             if not line:
                 thread_logger.debug(f"ht process {ht_proc.pid} stderr closed, exiting stderr reader thread")
                 break
-                
+
             line = line.strip()
             if line:
                 thread_logger.debug(f"ht stderr: {line}")
-                
+
         thread_logger.debug(f"Stderr reader thread exiting for ht process {ht_proc.pid}")
-    
+
     stderr_thread = threading.Thread(target=stderr_reader_thread, args=(ht_proc, process_logger), daemon=True)
     stderr_thread.start()
-    
+
     # Wait briefly for the process to initialize and get PID
     start_time = time.time()
     while time.time() - start_time < 2:

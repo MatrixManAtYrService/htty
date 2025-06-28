@@ -9,7 +9,7 @@ use std::env;
 use std::ffi::{CString, NulError};
 use std::fs::File;
 use std::future::Future;
-use std::io::{self, BufRead, BufReader};
+use std::io::{self};
 use std::os::fd::FromRawFd;
 use std::os::fd::{AsRawFd, OwnedFd};
 use std::path::PathBuf;
@@ -81,14 +81,14 @@ async fn drive_child(
             
             // Check if FIFO exists (indicates command completed and waitexit is blocking)
             if fifo_path_clone.exists() {
-                let _ = fifo_command_tx.try_send(Command::CommandCompleted(fifo_path_clone.clone()));
+                let _ = fifo_command_tx.try_send(Command::Completed(fifo_path_clone.clone()));
                 break; // Exit monitoring once FIFO is detected
             }
         }
     });
 
     // Process the main command and capture its output
-    let result = do_drive_child(master, input_rx, output_tx.clone()).await;
+    let _result = do_drive_child(master, input_rx, output_tx.clone()).await;
     
     // Step 5: Output capture is complete, but don't signal waitexit yet
     let _ = command_tx.try_send(Command::Debug("outputCaptureComplete".to_string()));

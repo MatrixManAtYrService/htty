@@ -1,37 +1,33 @@
 #!/usr/bin/env python3
 """
 CLI interface for htty providing two entry points:
-- ht: passthrough to the underlying ht binary (async mode)  
+- ht: passthrough to the underlying ht binary (async mode)
 - htty: synchronous batch mode for scripting
 """
 
 import argparse
-import json
 import logging
 import os
-import queue
-import subprocess
 import sys
 import time
-from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List
 
-from . import run, Press
+from . import run
 from ._find_ht import find_ht_bin
 
 
 def ht_passthrough() -> None:
     """
     Entry point for 'ht' command - passes through to the ht binary directly.
-    
+
     This provides the original async ht interface.
     """
     try:
         ht_binary = find_ht_bin()
-        
+
         # Replace current process with ht binary
         os.execv(ht_binary, [ht_binary] + sys.argv[1:])
-        
+
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
@@ -41,14 +37,14 @@ def parse_keys(keys_str: str, delimiter: str = ",") -> List[str]:
     """Parse a key sequence string into individual keys."""
     if not keys_str:
         return []
-    
+
     return [key.strip() for key in keys_str.split(delimiter) if key.strip()]
 
 
 def htty_sync() -> None:
     """
     Entry point for 'htty' command - synchronous batch mode.
-    
+
     Processes a sequence of actions and outputs results.
     """
     parser = argparse.ArgumentParser(
@@ -65,32 +61,37 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
     )
 
     parser.add_argument(
-        "-r", "--rows",
+        "-r",
+        "--rows",
         type=int,
         default=20,
         help="Number of terminal rows (default: 20)",
     )
     parser.add_argument(
-        "-c", "--cols", 
+        "-c",
+        "--cols",
         type=int,
         default=50,
         help="Number of terminal columns (default: 50)",
     )
     parser.add_argument(
-        "-k", "--keys",
+        "-k",
+        "--keys",
         action="append",
         default=[],
         help="Send keys to the terminal. Can be used multiple times.",
     )
     parser.add_argument(
-        "-s", "--snapshot",
+        "-s",
+        "--snapshot",
         action="append_const",
         const=True,
         default=[],
         help="Take a snapshot of terminal output. Can be used multiple times.",
     )
     parser.add_argument(
-        "-d", "--delimiter",
+        "-d",
+        "--delimiter",
         default=",",
         help="Delimiter for parsing keys (default: ',')",
     )
@@ -109,7 +110,7 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
     try:
         dash_dash_idx = sys.argv.index("--")
         args_before_command = sys.argv[1:dash_dash_idx]
-        command = sys.argv[dash_dash_idx + 1:]
+        command = sys.argv[dash_dash_idx + 1 :]
     except ValueError:
         if "--help" in sys.argv or "-h" in sys.argv:
             args_before_command = sys.argv[1:]
@@ -118,7 +119,7 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
             parser.error("No command specified after --")
 
     args = parser.parse_args(args_before_command)
-    
+
     if not command:
         if "--help" not in sys.argv and "-h" not in sys.argv:
             parser.error("No command specified after --")
@@ -126,7 +127,7 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
 
     # Build action sequence from arguments
     actions = []
-    
+
     # Simple approach: collect all -k and -s in order they appear
     arg_iter = iter(args_before_command)
     for arg in arg_iter:
@@ -143,35 +144,35 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
         # Set up debug logger if requested
         debug_logger = None
         extra_subscribes = None
-        
+
         if args.debug:
             # Create a debug logger that outputs to stderr
             debug_logger = logging.getLogger("htty.debug")
             debug_logger.setLevel(logging.DEBUG)
-            
+
             # Add debug handler if not already present
             if not debug_logger.handlers:
                 handler = logging.StreamHandler(sys.stderr)
                 handler.setLevel(logging.DEBUG)
-                formatter = logging.Formatter('DEBUG: %(message)s')
+                formatter = logging.Formatter("DEBUG: %(message)s")
                 handler.setFormatter(formatter)
                 debug_logger.addHandler(handler)
-            
+
             # Subscribe to debug events
             extra_subscribes = ["debug"]
-        
-        # Start the ht process  
+
+        # Start the ht process
         proc = run(
             command,
             rows=args.rows,
             cols=args.cols,
             no_exit=True,
             logger=debug_logger,
-            extra_subscribes=extra_subscribes
+            extra_subscribes=extra_subscribes,
         )
-        
+
         time.sleep(0.1)
-        
+
         # Process actions in order
         for action_type, action_value in actions:
             if action_type == "keys" and action_value:
@@ -188,35 +189,35 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
                 try:
                     snapshot = proc.snapshot()
                     # Print each line, stripping trailing whitespace
-                    for line in snapshot.text.split('\n'):
+                    for line in snapshot.text.split("\n"):
                         print(line.rstrip())
                     print("----")  # Separator
                 except Exception as e:
                     print(f"Error taking snapshot: {e}", file=sys.stderr)
                     print("----")  # Still print separator
-        
+
         # Take a final snapshot if none were explicitly requested
         if not any(action_type == "snapshot" for action_type, _ in actions):
             try:
                 snapshot = proc.snapshot()
-                for line in snapshot.text.split('\n'):
+                for line in snapshot.text.split("\n"):
                     print(line.rstrip())
                 print("----")
             except Exception as e:
                 print(f"Error taking final snapshot: {e}", file=sys.stderr)
                 print("----")
-        
+
         # Clean exit
         try:
             proc.exit(timeout=5.0)
         except Exception:
             # Force cleanup if needed
-            if hasattr(proc, 'subprocess_controller'):
+            if hasattr(proc, "subprocess_controller"):
                 try:
                     proc.subprocess_controller.terminate()
                 except Exception:
                     pass
-            
+
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

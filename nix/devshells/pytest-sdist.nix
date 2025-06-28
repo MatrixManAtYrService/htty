@@ -8,7 +8,7 @@ in
 
 lib.makePytestShell {
   inherit pkgs system perSystem;
-  
+
   # Use the pure Python htty environment (no binary)
   packages = [ perSystem.self.htty-py-sdist ];
 }

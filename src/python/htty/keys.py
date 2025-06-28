@@ -12,6 +12,7 @@ __all__ = ["Press", "KeyInput", "key_to_string", "keys_to_strings"]
 
 class Press(Enum):
     """Key constants for terminal input - comprehensive set"""
+
     ENTER = "Enter"
     TAB = "Tab"
     SPACE = "Space"

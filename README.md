@@ -38,11 +38,11 @@ with htty.terminal_session("vim", rows=20, cols=50) as proc:
     proc.send_keys("i")           # Enter insert mode
     proc.send_keys("Hello world!") # Type text
     proc.send_keys(Press.ESCAPE)   # Exit insert mode
-    
+
     snapshot = proc.snapshot()
     print(snapshot.text)          # Plain text
     print(snapshot.html)          # HTML with colors
-    
+
     proc.send_keys(":q!")         # Quit without saving
     proc.send_keys(Press.ENTER)
 
@@ -79,7 +79,7 @@ def test_my_cli_tool():
         # Send user input
         proc.send_keys("option1")
         proc.send_keys(Press.ENTER)
-        
+
         # Verify output
         snapshot = proc.snapshot()
         assert "Success!" in snapshot.text

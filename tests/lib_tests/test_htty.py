@@ -6,13 +6,12 @@ Adapted from the original htty test suite.
 import logging
 import os
 import sys
-import tempfile
 from textwrap import dedent
 from typing import Generator
 
 import pytest
 
-from htty import Press, terminal_session, run
+from htty import Press, run, terminal_session
 
 
 @pytest.fixture
@@ -20,20 +19,21 @@ def test_logger():
     """Create a custom logger for tests that doesn't propagate to pytest's loggers."""
     logger = logging.getLogger("htty.test")
     logger.setLevel(logging.DEBUG)
-    
+
     # Don't propagate to avoid pytest's dual logging system
     logger.propagate = False
-    
+
     # Add a simple console handler for live logging
     if not logger.handlers:
         handler = logging.StreamHandler()
         handler.setLevel(logging.DEBUG)
         # Simple format: just "ht stderr:" instead of timestamps and logger names
-        formatter = logging.Formatter('%(message)s')
+        formatter = logging.Formatter("%(message)s")
         handler.setFormatter(formatter)
         logger.addHandler(handler)
-    
+
     return logger
+
 
 COLORED_HELLO_WORLD_SCRIPT = """
 print("\\033[31mhello\\033[0m")
@@ -48,15 +48,17 @@ print("\\033[33mgoodbye\\033[0m")
 def hello_world_script() -> Generator[str, None, None]:
     # Use a fixed filename in /tmp so it can be run manually after tests
     script_path = "/tmp/htty_test_hello_world.py"
-    
+
     with open(script_path, "w") as f:
-        f.write(dedent("""
+        f.write(
+            dedent("""
             print("hello")
             input()
             print("world")
             input()
             print("goodbye")
-        """))
+        """)
+        )
 
     yield script_path
     # Don't delete the file so it can be run manually after tests
@@ -70,15 +72,17 @@ def hello_world_script() -> Generator[str, None, None]:
 def colored_hello_world_script() -> Generator[str, None, None]:
     # Use a fixed filename in /tmp so it can be run manually after tests
     script_path = "/tmp/htty_test_colored_hello_world.py"
-    
+
     with open(script_path, "w") as f:
-        f.write(dedent("""
+        f.write(
+            dedent("""
             print("\\033[31mhello\\033[0m")
             input()
             print("\\033[32mworld\\033[0m")
             input()
             print("\\033[33mgoodbye\\033[0m")
-        """))
+        """)
+        )
 
     yield script_path
     # Don't delete the file so it can be run manually after tests

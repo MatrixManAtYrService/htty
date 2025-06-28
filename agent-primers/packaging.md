@@ -34,10 +34,10 @@ Rust Source Code (src/rust/)
 
 ### 1. `ht.nix` - Pure Rust Binary
 
-**Purpose:** The core Rust binary with no Python dependencies  
-**Location:** `nix/packages/ht.nix`  
-**Input:** `src/rust/` directory (Rust source code)  
-**Output:** `ht` binary  
+**Purpose:** The core Rust binary with no Python dependencies
+**Location:** `nix/packages/ht.nix`
+**Input:** `src/rust/` directory (Rust source code)
+**Output:** `ht` binary
 
 ```bash
 nix build .#ht
@@ -59,10 +59,10 @@ nix build .#ht
 
 ### 2. `htty-wheel.nix` - Python Wheel with Embedded Binary
 
-**Purpose:** Python wheel containing both Python library and Rust binary  
-**Location:** `nix/packages/htty-wheel.nix`  
-**Input:** `src/rust/` directory + `src/python/` directory  
-**Output:** `.whl` file  
+**Purpose:** Python wheel containing both Python library and Rust binary
+**Location:** `nix/packages/htty-wheel.nix`
+**Input:** `src/rust/` directory + `src/python/` directory
+**Output:** `.whl` file
 
 ```bash
 nix build .#htty-wheel
@@ -83,12 +83,12 @@ ls ./result/*.whl
 
 ---
 
-### 3. `htty-pylib.nix` - Clean Python Environment  
+### 3. `htty-pylib.nix` - Clean Python Environment
 
-**Purpose:** Production Python environment that users receive  
-**Location:** `nix/packages/htty-pylib.nix`  
-**Input:** `htty-wheel.nix` + `py-envs/lib/` directory  
-**Output:** Python virtual environment with htty installed  
+**Purpose:** Production Python environment that users receive
+**Location:** `nix/packages/htty-pylib.nix`
+**Input:** `htty-wheel.nix` + `py-envs/lib/` directory
+**Output:** Python virtual environment with htty installed
 
 ```bash
 nix build .#htty-pylib
@@ -123,10 +123,10 @@ dependencies = [
 
 ### 4. `htty-cli.nix` - CLI Tools Package
 
-**Purpose:** Both CLI commands without Python environment pollution  
-**Location:** `nix/packages/htty-cli.nix`  
-**Input:** `htty.nix` (for ht binary) + `htty-pylib.nix` (for htty CLI)  
-**Output:** `ht` and `htty` commands  
+**Purpose:** Both CLI commands without Python environment pollution
+**Location:** `nix/packages/htty-cli.nix`
+**Input:** `htty.nix` (for ht binary) + `htty-pylib.nix` (for htty CLI)
+**Output:** `ht` and `htty` commands
 
 ```bash
 nix build .#htty-cli
@@ -148,12 +148,12 @@ nix build .#htty-cli
 
 ---
 
-### 5. `htty-test.nix` - Test Environment Package  
+### 5. `htty-test.nix` - Test Environment Package
 
-**Purpose:** Combines htty-pylib with test tools for traditional testing  
-**Location:** `nix/packages/htty-test.nix`  
-**Input:** `htty-pylib.nix` + `tests/` directory  
-**Output:** Test environment with wrapper scripts  
+**Purpose:** Combines htty-pylib with test tools for traditional testing
+**Location:** `nix/packages/htty-test.nix`
+**Input:** `htty-pylib.nix` + `tests/` directory
+**Output:** Test environment with wrapper scripts
 
 ```bash
 nix build .#htty-test
@@ -189,10 +189,10 @@ dependencies = [
 
 ### 6. `htty-py-sdist.nix` - Pure Python Source Distribution
 
-**Purpose:** Python-only package built with hatchling for unit testing  
-**Location:** `nix/packages/htty-py-sdist.nix`  
-**Input:** `src/python/` directory (Python source only)  
-**Output:** Python environment with htty but no ht binary  
+**Purpose:** Python-only package built with hatchling for unit testing
+**Location:** `nix/packages/htty-py-sdist.nix`
+**Input:** `src/python/` directory (Python source only)
+**Output:** Python environment with htty but no ht binary
 
 ```bash
 nix build .#htty-py-sdist
@@ -209,17 +209,17 @@ nix build .#htty-py-sdist
 
 ### 7. `#pytest-wheel` & `#pytest-sdist` - Development Shells
 
-**Purpose:** Environment-specific development shells with pytest marks support  
-**Location:** `nix/devshells/pytest-wheel.nix` and `nix/devshells/pytest-sdist.nix`  
-**Input:** Different htty packages + test dependencies via uv2nix  
-**Output:** Interactive shells optimized for different test types  
+**Purpose:** Environment-specific development shells with pytest marks support
+**Location:** `nix/devshells/pytest-wheel.nix` and `nix/devshells/pytest-sdist.nix`
+**Input:** Different htty packages + test dependencies via uv2nix
+**Output:** Interactive shells optimized for different test types
 
 ```bash
 # Integration testing with ht binary (22s builds)
 nix develop .#pytest-wheel
 pytest -vs -m wheel  # Run wheel-marked tests
 
-# Unit testing without binary (3s builds)  
+# Unit testing without binary (3s builds)
 nix develop .#pytest-sdist
 pytest -vs -m sdist  # Run sdist-marked tests
 ```
@@ -254,10 +254,10 @@ The project uses `uv2nix` for Python dependency management:
 
 2. **`py-envs/sdist/`** - Python-only dependencies
    - `pyproject.toml` defines htty with hatchling backend (no Rust)
-   - `uv.lock` pins exact versions  
+   - `uv.lock` pins exact versions
    - Used by `htty-py-sdist.nix`
 
-3. **`tests/`** - Test dependencies  
+3. **`tests/`** - Test dependencies
    - `pyproject.toml` defines pytest + test tools
    - `uv.lock` pins exact versions
    - Used by both `pytest-wheel` and `pytest-sdist` devshells
@@ -284,7 +284,7 @@ The Nix dependency system automatically rebuilds packages when inputs change:
 
 - **`src/rust/*.rs` changes** → `ht.nix` → `htty-wheel.nix` → `htty-pylib.nix` → pytest-wheel
 - **`src/python/**/*.py` changes** → `htty-wheel.nix` → `htty-pylib.nix` → pytest-wheel, `htty-py-sdist.nix` → pytest-sdist
-- **`py-envs/lib/uv.lock` changes** → `htty-pylib.nix` → pytest-wheel  
+- **`py-envs/lib/uv.lock` changes** → `htty-pylib.nix` → pytest-wheel
 - **`tests/uv.lock` changes** → both pytest environments
 - **`py-envs/sdist/pyproject.toml` changes** → `htty-py-sdist.nix` → pytest-sdist
 
@@ -328,27 +328,27 @@ To add a new package to the DAG:
 let
   # Define inputs
   someInput = inputs.self.packages.${pkgs.system}.some-dependency;
-  
+
   # Package metadata
   version = "1.0.0";
 in
 pkgs.stdenv.mkDerivation {
   pname = "new-package";
   inherit version;
-  
+
   # Define sources and dependencies
   src = ../..;
   buildInputs = [ someInput ];
-  
+
   # Build process
   buildPhase = ''
     # Build steps
   '';
-  
+
   installPhase = ''
     # Install steps
   '';
-  
+
   meta = with pkgs.lib; {
     description = "Description of the package";
     license = licenses.mit;

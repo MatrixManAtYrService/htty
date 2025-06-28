@@ -24,7 +24,7 @@ pub enum Event {
     Pid(f64, i32),
     ExitCode(f64, i32),
     Debug(f64, String),
-    CommandCompleted(f64),
+    Completed(f64),
 }
 
 pub struct Client(oneshot::Sender<Subscription>);
@@ -94,7 +94,7 @@ impl Session {
 
     pub fn emit_command_completed(&mut self) {
         let time = self.start_time.elapsed().as_secs_f64();
-        let _ = self.broadcast_tx.send(Event::CommandCompleted(time));
+        let _ = self.broadcast_tx.send(Event::Completed(time));
         self.stream_time = time;
         self.last_event_time = Instant::now();
     }
@@ -204,7 +204,7 @@ impl Event {
                 })
             }),
 
-            Event::CommandCompleted(time) => json!({
+            Event::Completed(time) => json!({
                 "type": "commandCompleted",
                 "data": json!({
                     "time": time

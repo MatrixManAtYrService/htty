@@ -116,7 +116,7 @@ def exit(self, timeout: float) -> int:
 
 2. User Interactions
    ├─ send_keys() → updates last_command_time
-   ├─ snapshot() → updates last_command_time  
+   ├─ snapshot() → updates last_command_time
    └─ All commands reset the 200ms emptiness timer
 
 3. Subprocess Completion
@@ -168,7 +168,7 @@ def exit(self, timeout: float) -> int:
 The 200ms delay ensures that all commands working their way through the system have been processed:
 
 - **JSON Parsing**: Commands from stdin are parsed
-- **Channel Transit**: Commands move through tokio mpsc channels  
+- **Channel Transit**: Commands move through tokio mpsc channels
 - **Event Processing**: Commands are handled by the main event loop
 - **PTY Operations**: Any final PTY reads/writes complete
 
@@ -179,7 +179,7 @@ This is **much safer** than the original approach which only waited for PTY EOF.
 When `exit()` is called, we briefly wait for any `exitCode` event that might be in transit:
 
 - Network delays (if using HTTP API)
-- Event queue processing delays  
+- Event queue processing delays
 - Race conditions between `exit()` call and subprocess completion
 
 ## Data Protection Guarantees
@@ -189,7 +189,7 @@ When `exit()` is called, we briefly wait for any `exitCode` event that might be 
 - 200ms quiescence ensures all output is processed
 - PTY task stays alive to keep channels open
 
-### 2. **No Command Loss**  
+### 2. **No Command Loss**
 - Command channel emptiness ensures all user commands processed
 - Brief wait period catches race conditions
 - Commands sent during quiescence period restart the timer
@@ -218,7 +218,7 @@ ht.exit() called
 │     ├─ exitCode received? → Graceful Exit
 │     └─ Still no exitCode → Forced Exit
 │        ├─ SIGTERM subprocess
-│        ├─ SIGTERM ht process  
+│        ├─ SIGTERM ht process
 │        ├─ Wait timeout → SIGKILL ht process
 │        └─ Return exit_code = -15 (expected)
 ```
@@ -256,11 +256,11 @@ For troubleshooting, the system emits debug events showing the coordination:
 
 ```
 startingFifoMonitoring          # FIFO monitoring task started
-commandCompletedReceived        # CommandCompleted event processed  
+commandCompletedReceived        # CommandCompleted event processed
 signalingWaitexit              # About to write "exit" to FIFO
 exitSignalSent                 # Successfully wrote "exit" to FIFO
 outputCaptureComplete          # PTY output capture finished
-coordinationComplete           # Wait coordination finished  
+coordinationComplete           # Wait coordination finished
 ptyContinuingForSnapshots      # PTY task staying alive
 ptyHeartbeat                   # Periodic keep-alive (every 60s)
 ptyTaskExiting                 # PTY task shutting down gracefully
@@ -287,7 +287,7 @@ ptyTaskExiting                 # PTY task shutting down gracefully
 
 ### Unit Tests Validate:
 1. **Graceful exit** when subprocess already completed
-2. **Forced exit** when subprocess still running  
+2. **Forced exit** when subprocess still running
 3. **Exit code preservation** (0 vs -15 vs original subprocess code)
 4. **Snapshot availability** after subprocess completion
 5. **Command processing** during quiescence periods
@@ -314,4 +314,4 @@ ptyTaskExiting                 # PTY task shutting down gracefully
 
 ---
 
-This coordination pattern ensures **reliable, fast, and data-safe** terminal automation while supporting both interactive and programmatic use cases. The key insight is **separating subprocess completion detection from output capture completion**, allowing independent optimization of both concerns. 
+This coordination pattern ensures **reliable, fast, and data-safe** terminal automation while supporting both interactive and programmatic use cases. The key insight is **separating subprocess completion detection from output capture completion**, allowing independent optimization of both concerns.

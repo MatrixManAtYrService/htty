@@ -3,6 +3,7 @@ HTML utilities for converting ANSI terminal sequences to HTML.
 """
 
 import re
+
 from ansi2html import Ansi2HTMLConverter
 
 __all__ = ["clean_ansi_for_html", "simple_ansi_to_html"]
@@ -56,9 +57,9 @@ def simple_ansi_to_html(ansi_text: str) -> str:
     """
     # Clean the ANSI text first
     cleaned_seq = clean_ansi_for_html(ansi_text)
-    
+
     # Use the same converter as original htty
     ansi_converter = Ansi2HTMLConverter()
     html = ansi_converter.convert(cleaned_seq)
-    
+
     return html

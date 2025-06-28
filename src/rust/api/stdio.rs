@@ -46,19 +46,14 @@ pub async fn start(
 
                     None => {
                         // stdin closed - drain any remaining commands in the channel
-                        loop {
-                            match input_rx.try_recv() {
-                                Ok(line) => {
-                                    match parse_line(&line) {
-                                        Ok(command) => {
-                                            if command_tx.send(command).await.is_err() {
-                                                break; // command channel closed, time to exit
-                                            }
-                                        },
-                                        Err(e) => eprintln!("command parse error: {e}"),
+                        while let Ok(line) = input_rx.try_recv() {
+                            match parse_line(&line) {
+                                Ok(command) => {
+                                    if command_tx.send(command).await.is_err() {
+                                        break; // command channel closed, time to exit
                                     }
-                                }
-                                Err(_) => break, // no more commands in input channel
+                                },
+                                Err(e) => eprintln!("command parse error: {e}"),
                             }
                         }
                         
@@ -82,35 +77,35 @@ pub async fn start(
 
                 match event {
                     Some(Ok(e @ Init(_, _, _, _, _))) if sub.init => {
-                        println!("{}", e.to_json().to_string());
+                        println!("{}", e.to_json());
                     }
 
                     Some(Ok(e @ Output(_, _))) if sub.output => {
-                        println!("{}", e.to_json().to_string());
+                        println!("{}", e.to_json());
                     }
 
                     Some(Ok(e @ Resize(_, _, _))) if sub.resize => {
-                        println!("{}", e.to_json().to_string());
+                        println!("{}", e.to_json());
                     }
 
                     Some(Ok(e @ Snapshot(_, _, _, _))) if sub.snapshot => {
-                        println!("{}", e.to_json().to_string());
+                        println!("{}", e.to_json());
                     }
 
                     Some(Ok(e @ Pid(_, _))) if sub.pid => {
-                        println!("{}", e.to_json().to_string());
+                        println!("{}", e.to_json());
                     }
 
                     Some(Ok(e @ ExitCode(_, _))) if sub.exit_code => {
-                        println!("{}", e.to_json().to_string());
+                        println!("{}", e.to_json());
                     }
 
                     Some(Ok(e @ Debug(_, _))) if sub.debug => {
-                        println!("{}", e.to_json().to_string());
+                        println!("{}", e.to_json());
                     }
 
-                    Some(Ok(e @ CommandCompleted(_))) if sub.command_completed => {
-                        println!("{}", e.to_json().to_string());
+                    Some(Ok(e @ Completed(_))) if sub.command_completed => {
+                        println!("{}", e.to_json());
                     }
 
                     Some(_) => (),

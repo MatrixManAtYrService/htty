@@ -4,13 +4,13 @@
 let
   # Get overlays for Rust
   overlays = [ inputs.rust-overlay.overlays.default ];
-  pkgsWithRust = import inputs.nixpkgs { 
-    inherit (pkgs.stdenv.hostPlatform) system; 
-    inherit overlays; 
+  pkgsWithRust = import inputs.nixpkgs {
+    inherit (pkgs.stdenv.hostPlatform) system;
+    inherit overlays;
   };
 
   inherit (pkgs.stdenv.hostPlatform) system;
-  
+
   rustToolchain = pkgsWithRust.rust-bin.stable.latest.default.override {
     extensions = [ "rust-src" ];
   };
@@ -29,24 +29,24 @@ let
         projectRoot = toString ../..;
         relPath = pkgs.lib.removePrefix projectRoot (toString path);
       in
-        # Include Rust source files
-        (pkgs.lib.hasPrefix "/src/rust" relPath) ||
-        # Include Python source files  
-        (pkgs.lib.hasPrefix "/src/python" relPath) ||
-        # Include assets directory (needed by rust-embed)
-        (pkgs.lib.hasPrefix "/assets" relPath) ||
-        # Include directory structure
-        (relPath == "/src/rust" && type == "directory") ||
-        (relPath == "/src/python" && type == "directory") ||
-        (relPath == "/src" && type == "directory") ||
-        (relPath == "/assets" && type == "directory") ||
-        # Include build configuration files
-        (baseName == "Cargo.toml") ||
-        (baseName == "Cargo.lock") ||
-        (baseName == "pyproject.toml") ||
-        # Include license and readme
-        (baseName == "LICENSE") ||
-        (baseName == "README.md");
+      # Include Rust source files
+      (pkgs.lib.hasPrefix "/src/rust" relPath) ||
+      # Include Python source files
+      (pkgs.lib.hasPrefix "/src/python" relPath) ||
+      # Include assets directory (needed by rust-embed)
+      (pkgs.lib.hasPrefix "/assets" relPath) ||
+      # Include directory structure
+      (relPath == "/src/rust" && type == "directory") ||
+      (relPath == "/src/python" && type == "directory") ||
+      (relPath == "/src" && type == "directory") ||
+      (relPath == "/assets" && type == "directory") ||
+      # Include build configuration files
+      (baseName == "Cargo.toml") ||
+      (baseName == "Cargo.lock") ||
+      (baseName == "pyproject.toml") ||
+      # Include license and readme
+      (baseName == "LICENSE") ||
+      (baseName == "README.md");
   };
 
 in
@@ -67,44 +67,42 @@ pkgsWithRust.stdenv.mkDerivation {
     rustPlatform.cargoSetupHook
   ];
 
-  buildInputs = with pkgsWithRust; [
-    # Add any required libraries here
-  ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
+  buildInputs = pkgs.lib.optionals pkgs.stdenv.isDarwin [
     pkgs.libiconv
     pkgs.darwin.apple_sdk.frameworks.Foundation
   ];
 
   buildPhase = ''
     runHook preBuild
-    
+
     # Set up environment for maturin
     export CARGO_TARGET_DIR="./target"
-    
+
     # Build the wheel with binary bindings (no python feature)
     maturin build --release --out dist/
-    
+
     runHook postBuild
   '';
 
   installPhase = ''
     runHook preInstall
-    
+
     # Create output directory
     mkdir -p $out
-    
+
     # Copy the built wheel
     cp dist/*.whl $out/
-    
+
     # Store wheel metadata for consumers
     WHEEL_FILE=$(ls $out/*.whl | head -1)
     WHEEL_NAME=$(basename "$WHEEL_FILE")
-    
+
     # Store metadata
     echo "$WHEEL_NAME" > "$out/wheel-filename.txt"
     echo "$WHEEL_FILE" > "$out/wheel-path.txt"
-    
+
     echo "Built wheel package: $WHEEL_NAME"
-    
+
     runHook postInstall
   '';
 
