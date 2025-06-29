@@ -15,7 +15,7 @@ import signal
 import subprocess
 import threading
 import time
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from typing import Any, Dict, List, Optional, Union
 
 from ._find_ht import find_ht_bin
@@ -161,8 +161,8 @@ class HTProcess:
 
     def __init__(
         self,
-        ht_proc: subprocess.Popen,
-        event_queue: queue.Queue,
+        ht_proc: subprocess.Popen[str],
+        event_queue: queue.Queue[Dict[str, Any]],
         command: Optional[str] = None,
         pid: Optional[int] = None,
         rows: Optional[int] = None,
@@ -197,10 +197,8 @@ class HTProcess:
                 f"This may cause resource leaks!"
             )
             # Try emergency cleanup
-            try:
+            with suppress(Exception):
                 self.ht_proc.terminate()
-            except Exception:
-                pass
 
     def get_output(self) -> List[Dict[str, Any]]:
         """Return list of output events."""
@@ -392,10 +390,8 @@ class HTProcess:
                     self.logger.warning(
                         f"Subprocess {self.subprocess_controller.pid} did not terminate gracefully, killing"
                     )
-                    try:
+                    with suppress(Exception):
                         self.subprocess_controller.kill()
-                    except Exception:
-                        pass
             except OSError:
                 self.logger.debug(f"Subprocess {self.subprocess_controller.pid} already exited")
                 pass  # Process already exited
@@ -443,17 +439,13 @@ class HTProcess:
 
     def terminate(self) -> None:
         """Terminate the ht process itself."""
-        try:
+        with suppress(Exception):
             self.ht_proc.terminate()
-        except Exception:
-            pass
 
     def kill(self) -> None:
         """Force kill the ht process itself."""
-        try:
+        with suppress(Exception):
             self.ht_proc.kill()
-        except Exception:
-            pass
 
     def wait(self, timeout: Optional[float] = None) -> Optional[int]:
         """
@@ -502,13 +494,10 @@ def run(
     ht_binary = find_ht_bin()
 
     # Handle both string commands and pre-split argument lists
-    if isinstance(command, str):
-        cmd_args = command.split()
-    else:
-        cmd_args = command
+    cmd_args = command.split() if isinstance(command, str) else command
 
     # Create a queue for events
-    event_queue: queue.Queue = queue.Queue()
+    event_queue: queue.Queue[Dict[str, Any]] = queue.Queue()
 
     # Build the ht command with event subscription
     base_subscribes = ["init", "snapshot", "output", "resize", "pid", "exitCode", "commandCompleted"]
@@ -548,8 +537,8 @@ def run(
 
     # Create a reader thread to capture ht output
     def reader_thread(
-        ht_proc: subprocess.Popen,
-        queue_obj: queue.Queue,
+        ht_proc: subprocess.Popen[str],
+        queue_obj: queue.Queue[Dict[str, Any]],
         ht_process: HTProcess,
         thread_logger: logging.Logger,
     ) -> None:
@@ -619,7 +608,7 @@ def run(
     stdout_thread.start()
 
     # Start a stderr reader thread
-    def stderr_reader_thread(ht_proc: subprocess.Popen, thread_logger: logging.Logger) -> None:
+    def stderr_reader_thread(ht_proc: subprocess.Popen[str], thread_logger: logging.Logger) -> None:
         thread_logger.debug(f"Stderr reader thread started for ht process {ht_proc.pid}")
 
         while True:
@@ -688,7 +677,5 @@ def terminal_session(
             proc.terminate()
             proc.wait(timeout=DEFAULT_SUBPROCESS_WAIT_TIMEOUT)
         except Exception:
-            try:
+            with suppress(Exception):
                 proc.kill()
-            except Exception:
-                pass

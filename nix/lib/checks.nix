@@ -217,6 +217,14 @@ let
     '';
   };
 
+  pyrightCheck = makeCheck {
+    name = "pyright";
+    description = "Python type checking with pyright";
+    dependencies = with pkgs; [ pyright ];
+    command = "nix develop .#pytest-sdist --command pyright";
+    verboseCommand = "nix develop .#pytest-sdist --command pyright --verbose";
+  };
+
   rustClippyCheck = makeCheck {
     name = "rust-clippy";
     description = "Rust linting with clippy";
@@ -228,5 +236,5 @@ let
 in
 {
   inherit makeCheck generateAnalysisScript createAnalysisPackage;
-  inherit deadnixCheck nixpkgsFmtCheck statixCheck ruffCheckCheck ruffFormatCheck trimWhitespaceCheck rustClippyCheck;
+  inherit deadnixCheck nixpkgsFmtCheck statixCheck ruffCheckCheck ruffFormatCheck pyrightCheck trimWhitespaceCheck rustClippyCheck;
 }

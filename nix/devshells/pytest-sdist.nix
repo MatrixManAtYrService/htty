@@ -11,4 +11,7 @@ lib.makePytestShell {
 
   # Use the pure Python htty environment (no binary)
   packages = [ perSystem.self.htty-py-sdist ];
+
+  # Add pyright for type checking
+  extraBuildInputs = [ pkgs.pyright ];
 }

@@ -6,14 +6,17 @@ CLI interface for htty providing two entry points:
 """
 
 import argparse
+import contextlib
 import logging
 import os
 import sys
 import time
-from typing import List
+from typing import List, Optional, Tuple
 
 from . import run
 from ._find_ht import find_ht_bin
+from .core import HTProcess
+from .keys import KeyInput
 
 
 def ht_passthrough() -> None:
@@ -33,7 +36,7 @@ def ht_passthrough() -> None:
         sys.exit(1)
 
 
-def parse_keys(keys_str: str, delimiter: str = ",") -> List[str]:
+def parse_keys(keys_str: str, delimiter: str = ",") -> List[KeyInput]:
     """Parse a key sequence string into individual keys."""
     if not keys_str:
         return []
@@ -126,7 +129,7 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
         return
 
     # Build action sequence from arguments
-    actions = []
+    actions: List[Tuple[str, Optional[str]]] = []
 
     # Simple approach: collect all -k and -s in order they appear
     arg_iter = iter(args_before_command)
@@ -142,8 +145,8 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
 
     try:
         # Set up debug logger if requested
-        debug_logger = None
-        extra_subscribes = None
+        debug_logger: Optional[logging.Logger] = None
+        extra_subscribes: Optional[List[str]] = None
 
         if args.debug:
             # Create a debug logger that outputs to stderr
@@ -162,7 +165,7 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
             extra_subscribes = ["debug"]
 
         # Start the ht process
-        proc = run(
+        proc: HTProcess = run(
             command,
             rows=args.rows,
             cols=args.cols,
@@ -213,10 +216,8 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
         except Exception:
             # Force cleanup if needed
             if hasattr(proc, "subprocess_controller"):
-                try:
+                with contextlib.suppress(Exception):
                     proc.subprocess_controller.terminate()
-                except Exception:
-                    pass
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

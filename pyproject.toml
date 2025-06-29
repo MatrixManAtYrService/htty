@@ -39,6 +39,10 @@ Documentation = "https://github.com/MatrixManAtYrService/ht"
 Repository = "https://github.com/MatrixManAtYrService/ht"
 Issues = "https://github.com/MatrixManAtYrService/ht/issues"
 
+[project.scripts]
+ht = "htty.cli:ht_passthrough"
+htty = "htty.cli:htty_sync"
+
 [build-system]
 requires = ["maturin>=1.3.2"]
 build-backend = "maturin"
@@ -67,6 +71,9 @@ select = [
     "W",   # pycodestyle warnings
     "F",   # pyflakes
     "I",   # isort (import sorting)
+    "UP",  # pyupgrade
+    "B" ,  # flake8-bugbear
+    "SIM", # flake8-simplify
 ]
 
 fixable = ["ALL"]
@@ -75,6 +82,21 @@ fixable = ["ALL"]
 known-first-party = ["htty"]
 force-single-line = false
 combine-as-imports = true
+
+[tool.pyright]
+typeCheckingMode = "strict"
+reportMissingTypeStubs = "none"
+reportUnknownMemberType = "error"
+reportUnknownArgumentType = "error"
+reportUnknownVariableType = "error"
+reportUnknownParameterType = "error"
+reportMissingParameterType = "error"
+reportMissingReturnType = "error"
+reportUntypedFunctionDecorator = "error"
+reportUntypedClassDecorator = "error"
+reportUntypedBaseClass = "error"
+reportUntypedNamedTuple = "error"
+
 
 [tool.pytest.ini_options]
 # Custom marks for different test environments

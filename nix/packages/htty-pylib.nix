@@ -38,18 +38,8 @@ let
   pythonEnv = pythonSet.mkVirtualEnv "htty-pylib" workspace.deps.default;
 
 in
-# Wrap the Python environment to also provide CLI tools
-pkgs.symlinkJoin {
-  name = "htty-pylib-${version}";
-  paths = [ pythonEnv ];
-
-  buildInputs = [ pkgs.makeWrapper ];
-
-  postBuild = ''
-    # Create htty CLI wrapper that uses this environment
-    makeWrapper ${pythonEnv}/bin/python $out/bin/htty \
-      --add-flags "-m htty"
-  '';
+pythonEnv.overrideAttrs (old: {
+  name = "htty-${version}";
 
   meta = with pkgs.lib; {
     description = "Headless Terminal - Python library with CLI";
@@ -57,4 +47,4 @@ pkgs.symlinkJoin {
     license = licenses.mit;
     platforms = platforms.unix;
   };
-}
+})

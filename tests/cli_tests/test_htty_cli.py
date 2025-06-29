@@ -1,5 +1,6 @@
 """Tests for the htty command line interface via subprocess."""
 
+import contextlib
 import logging
 import os
 import re
@@ -129,10 +130,8 @@ def greeter_script() -> Generator[str, None, None]:
         tmp_path = tmp.name
 
     yield tmp_path
-    try:
+    with contextlib.suppress(OSError):
         os.unlink(tmp_path)
-    except OSError:
-        pass
 
 
 @pytest.mark.wheel

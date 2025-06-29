@@ -15,7 +15,7 @@ from htty import Press, run, terminal_session
 
 
 @pytest.fixture
-def test_logger():
+def test_logger() -> logging.Logger:
     """Create a custom logger for tests that doesn't propagate to pytest's loggers."""
     logger = logging.getLogger("htty.test")
     logger.setLevel(logging.DEBUG)
@@ -89,7 +89,7 @@ def colored_hello_world_script() -> Generator[str, None, None]:
 
 
 @pytest.mark.wheel
-def test_hello_world_with_scrolling(hello_world_script: str, test_logger) -> None:
+def test_hello_world_with_scrolling(hello_world_script: str, test_logger: logging.Logger) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
     proc = run(cmd, rows=3, cols=8, logger=test_logger)
     assert proc.snapshot().text == ("hello   \n        \n        ")
@@ -101,7 +101,7 @@ def test_hello_world_with_scrolling(hello_world_script: str, test_logger) -> Non
 
 
 @pytest.mark.wheel
-def test_hello_world_after_exit(hello_world_script: str, test_logger) -> None:
+def test_hello_world_after_exit(hello_world_script: str, test_logger: logging.Logger) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
     ht = run(cmd, rows=6, cols=8, logger=test_logger)
     ht.send_keys(Press.ENTER)
@@ -115,7 +115,7 @@ def test_hello_world_after_exit(hello_world_script: str, test_logger) -> None:
 
 
 @pytest.mark.wheel
-def test_outputs(hello_world_script: str, test_logger) -> None:
+def test_outputs(hello_world_script: str, test_logger: logging.Logger) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
     ht = run(cmd, rows=4, cols=8, logger=test_logger)
     ht.send_keys(Press.ENTER)  # First input() call
