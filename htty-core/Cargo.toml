@@ -1,5 +1,5 @@
 [package]
-name = "htty"
+name = "htty_core"
 version = "0.3.0"
 edition = "2021"
 rust-version = "1.74"
@@ -10,9 +10,8 @@ readme = "README.md"
 description = "Headless Terminal (htty fork)"
 
 [lib]
-name = "htty"
-crate-type = ["cdylib", "rlib"]
-required-features = ["python"]
+name = "htty_core"
+crate-type = ["cdylib"]
 path = "src/rust/lib.rs"
 
 [[bin]]
@@ -36,7 +35,7 @@ rust-embed = "8.4.0"
 mime_guess = "2.0.5"
 tempfile = "3.10"
 
-# Python binding dependencies (no longer used - we use subprocess approach)
+# Python binding dependencies (commented out - using subprocess approach)
 # pyo3 = { version = "0.21", features = ["extension-module"], optional = true }
 # which = { version = "4.2", optional = true }
 # html-escape = { version = "0.2", optional = true }
@@ -44,7 +43,7 @@ tempfile = "3.10"
 
 [features]
 default = []
-# python = ["pyo3", "which", "html-escape", "shell-words"]  # Removed - using subprocess approach
+# python = ["pyo3", "which", "html-escape", "shell-words"]
 
 [profile.release]
 strip = true

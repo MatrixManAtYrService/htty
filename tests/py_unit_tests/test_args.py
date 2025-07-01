@@ -18,9 +18,13 @@ def test_ht_binary_not_available():
     """
     with pytest.raises(subprocess.CalledProcessError):
         # This should fail because ht is not available in pure Python env
-        result = subprocess.run(["which", "ht"], check=True, capture_output=True, text=True)
+        result = subprocess.run(
+            ["which", "ht"], check=True, capture_output=True, text=True
+        )
 
     # Also verify using subprocess.run without check=True
     result = subprocess.run(["which", "ht"], capture_output=True, text=True)
-    assert result.returncode != 0, "ht binary should not be found in pure Python environment"
+    assert result.returncode != 0, (
+        "ht binary should not be found in pure Python environment"
+    )
     assert result.stdout.strip() == "", "which ht should return empty output"

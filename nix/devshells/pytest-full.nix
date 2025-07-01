@@ -12,8 +12,8 @@ in
 lib.makePytestShell {
   inherit pkgs system perSystem;
 
-  # Use the complete htty environment (with binary)
-  packages = [ perSystem.self.htty-pylib ];
+  # Use the complete htty environment (with binary and Python wrapper)
+  packages = [ perSystem.self.htty ];
 
   # Wheel-specific additions
   extraBuildInputs = [ testVim ];
@@ -21,7 +21,7 @@ lib.makePytestShell {
     # Set vim target for tests
     export HTTY_TEST_VIM_TARGET="${testVim}/bin/vim"
 
-    # Add htty-pylib bin to PATH (for ht binary access)
-    export PATH="${perSystem.self.htty-pylib}/bin:$PATH"
+    # Add htty bin to PATH (for both ht binary and htty command access)
+    export PATH="${perSystem.self.htty}/bin:$PATH"
   '';
 }

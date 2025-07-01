@@ -1,9 +1,0 @@
-[project]
-name = "htty-pylib-env"
-version = "0.1.0"
-description = "Python environment with htty library only"
-requires-python = ">=3.10"
-dependencies = [
-    "htty",
-    "ansi2html",
-]

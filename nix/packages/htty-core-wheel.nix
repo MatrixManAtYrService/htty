@@ -1,4 +1,4 @@
-# Build htty Python wheel with ht binary using maturin
+# Build htty-core Python wheel (maturin-built with Rust binary)
 { inputs, pkgs, ... }:
 
 let
@@ -9,29 +9,27 @@ let
     inherit overlays;
   };
 
-  inherit (pkgs.stdenv.hostPlatform) system;
-
   rustToolchain = pkgsWithRust.rust-bin.stable.latest.default.override {
     extensions = [ "rust-src" ];
   };
 
   # Get project metadata
-  cargoToml = builtins.fromTOML (builtins.readFile ../../Cargo.toml);
+  cargoToml = builtins.fromTOML (builtins.readFile ../../htty-core/Cargo.toml);
   inherit (cargoToml.package) version;
 
-  # Include only files needed for wheel building (Rust + Python sources)
+  # Include only files needed for htty-core wheel building
   wheelSource = pkgs.lib.cleanSourceWith {
-    src = ../..;
+    src = ../../htty-core;
     filter = path: type:
       let
         baseName = baseNameOf path;
-        # Get relative path from project root
-        projectRoot = toString ../..;
+        # Get relative path from htty-core root
+        projectRoot = toString ../../htty-core;
         relPath = pkgs.lib.removePrefix projectRoot (toString path);
       in
       # Include Rust source files
       (pkgs.lib.hasPrefix "/src/rust" relPath) ||
-      # Include Python source files
+      # Include Python source files for htty-core
       (pkgs.lib.hasPrefix "/src/python" relPath) ||
       # Include assets directory (needed by rust-embed)
       (pkgs.lib.hasPrefix "/assets" relPath) ||
@@ -44,25 +42,25 @@ let
       (baseName == "Cargo.toml") ||
       (baseName == "Cargo.lock") ||
       (baseName == "pyproject.toml") ||
-      # Include license and readme
-      (baseName == "LICENSE") ||
+      # Include readme (referenced in Cargo.toml)
       (baseName == "README.md");
   };
 
 in
 pkgsWithRust.stdenv.mkDerivation {
-  pname = "htty-wheel";
+  pname = "htty-core-wheel";
   inherit version;
   src = wheelSource;
 
   cargoDeps = pkgsWithRust.rustPlatform.importCargoLock {
-    lockFile = ../../Cargo.lock;
+    lockFile = ../../htty-core/Cargo.lock;
   };
 
   nativeBuildInputs = with pkgsWithRust; [
     rustToolchain
     pkg-config
     python3
+    python3.pkgs.cffi
     maturin
     rustPlatform.cargoSetupHook
   ];
@@ -75,10 +73,13 @@ pkgsWithRust.stdenv.mkDerivation {
   buildPhase = ''
     runHook preBuild
 
-    # Set up environment for maturin
+    # Set up environment for cargo and maturin
     export CARGO_TARGET_DIR="./target"
 
-    # Build the wheel with binary bindings (no python feature)
+    # First build the Rust binary with cargo
+    cargo build --release --bin ht
+
+    # Then use maturin to package the Python module + binary
     maturin build --release --out dist/
 
     runHook postBuild
@@ -101,13 +102,13 @@ pkgsWithRust.stdenv.mkDerivation {
     echo "$WHEEL_NAME" > "$out/wheel-filename.txt"
     echo "$WHEEL_FILE" > "$out/wheel-path.txt"
 
-    echo "Built wheel package: $WHEEL_NAME"
+    echo "Built htty-core wheel package: $WHEEL_NAME"
 
     runHook postInstall
   '';
 
   meta = with pkgs.lib; {
-    description = "Headless Terminal - Python wheel with ht binary";
+    description = "Headless Terminal - Rust binary with Python bindings wheel";
     homepage = "https://github.com/MatrixManAtYrService/ht";
     license = licenses.mit;
     platforms = platforms.unix;

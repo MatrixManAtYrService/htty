@@ -48,8 +48,9 @@ log_cli_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 log_auto_indent = true
 # Custom marks for different test environments
 markers = [
-    "wheel: tests that require the htty wheel with ht binary",
-    "sdist: tests that run with pure Python source distribution (no ht binary)",
-    "empty: tests that verify pytest-empty environment has no htty packages",
+    "full: tests that require the complete htty environment (htty-core + htty wrapper)",
+    "core: tests that need only htty-core (Rust binary + minimal Python bindings)",
+    "sdist: tests that run with pure Python htty package (no htty-core dependency)",
+    "empty: tests that verify pytest-empty environment has no htty packages", 
     "cli: tests that verify pytest-cli environment has CLI tools but no Python module"
 ]

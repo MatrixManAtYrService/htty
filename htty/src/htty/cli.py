@@ -184,7 +184,9 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
                     # Check if subprocess has completed before sending keys
                     if proc.subprocess_completed or proc.subprocess_exited:
                         if debug_logger:
-                            debug_logger.warning(f"Subprocess has completed, skipping keys: {action_value}")
+                            debug_logger.warning(
+                                f"Subprocess has completed, skipping keys: {action_value}"
+                            )
                         continue
                     proc.send_keys(keys)
                     time.sleep(0.05)  # Small delay after sending keys

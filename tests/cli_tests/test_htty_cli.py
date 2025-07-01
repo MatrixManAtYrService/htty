@@ -26,7 +26,9 @@ class Pattern:
     lines: List[Union[str, re.Pattern[str]]]
 
 
-def terminal_contents(*, actual_snapshots: str, expected_patterns: List[Pattern]) -> bool:
+def terminal_contents(
+    *, actual_snapshots: str, expected_patterns: List[Pattern]
+) -> bool:
     """Check if the actual snapshot matches the expected patterns in order."""
     # Split into lines without stripping leading/trailing newlines to preserve empty lines
     actual_lines = actual_snapshots.split("\n")
@@ -52,7 +54,9 @@ def terminal_contents(*, actual_snapshots: str, expected_patterns: List[Pattern]
         # Match each line in the pattern
         for line_idx, expected_line in enumerate(pattern.lines):
             if line_idx >= len(actual_lines):
-                print(f"Pattern {pattern_idx}, line {line_idx}: Actual snapshot too short")
+                print(
+                    f"Pattern {pattern_idx}, line {line_idx}: Actual snapshot too short"
+                )
                 return False
 
             actual_line = actual_lines[line_idx]
@@ -68,7 +72,9 @@ def terminal_contents(*, actual_snapshots: str, expected_patterns: List[Pattern]
             else:
                 # This is a string that should be matched exactly
                 if expected_line != actual_line:
-                    print(f"Pattern {pattern_idx}, line {line_idx}: Expected '{expected_line}', got '{actual_line}'")
+                    print(
+                        f"Pattern {pattern_idx}, line {line_idx}: Expected '{expected_line}', got '{actual_line}'"
+                    )
                     return False
 
         # Remove the matched lines from actual_lines for the next pattern
@@ -77,11 +83,10 @@ def terminal_contents(*, actual_snapshots: str, expected_patterns: List[Pattern]
     return True
 
 
-@pytest.mark.wheel
+@pytest.mark.cli
 def test_echo_hello() -> None:
     cmd = [
-        *(sys.executable, "-m"),
-        "htty.cli",
+        "htty",
         *("-r", "2"),
         *("-c", "10"),
         "--",
@@ -95,7 +100,7 @@ def test_echo_hello() -> None:
     assert actual_output == expected_output
 
 
-@pytest.mark.wheel
+@pytest.mark.full
 def test_keys_after_subproc_exit() -> None:
     cmd = [
         *(sys.executable, "-m"),
@@ -134,7 +139,7 @@ def greeter_script() -> Generator[str, None, None]:
         os.unlink(tmp_path)
 
 
-@pytest.mark.wheel
+@pytest.mark.full
 def test_send_keys(greeter_script: str) -> None:
     cmd = [
         *(sys.executable, "-m"),
@@ -153,7 +158,7 @@ def test_send_keys(greeter_script: str) -> None:
     assert actual_output == expected_output
 
 
-@pytest.mark.wheel
+@pytest.mark.full
 def test_vim() -> None:
     try:
         vim_path = os.environ["HTTY_TEST_VIM_TARGET"]
@@ -245,7 +250,7 @@ def test_vim() -> None:
     )
 
 
-@pytest.mark.wheel
+@pytest.mark.full
 def test_empty_line_preservation():
     """Test that CLI preserves empty lines at the beginning of output."""
     import os
@@ -267,7 +272,9 @@ def test_empty_line_preservation():
             script_path,
         ]
 
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
+        result = subprocess.run(
+            cmd, capture_output=True, text=True, check=True, env=env
+        )
 
         # Parse the snapshot using the same logic as other tests
         snapshots = result.stdout.split("----\n")

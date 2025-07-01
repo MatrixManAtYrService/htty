@@ -229,8 +229,8 @@ let
     name = "rust-clippy";
     description = "Rust linting with clippy";
     dependencies = with pkgs; [ rustc cargo clippy ];
-    command = "cargo clippy --all-targets --all-features";
-    verboseCommand = "cargo clippy --all-targets --all-features --verbose";
+    command = "cd htty-core && cargo clippy --all-targets --all-features";
+    verboseCommand = "cd htty-core && cargo clippy --all-targets --all-features --verbose";
   };
 
 in

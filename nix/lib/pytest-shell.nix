@@ -60,7 +60,8 @@ pkgs: {
 
       shellHook = ''
         # Set up Python path: packages first (priority), then test deps
-        ${if packages != [] then ''export PYTHONPATH="${builtins.concatStringsSep ":" (map (pkg: "${pkg}/lib/python3.12/site-packages") packages)}:${testDepsEnv}/lib/python3.12/site-packages''${PYTHONPATH:+:$PYTHONPATH}"'' else ''export PYTHONPATH="${testDepsEnv}/lib/python3.12/site-packages''${PYTHONPATH:+:$PYTHONPATH}"''}
+        # Don't inherit existing PYTHONPATH to ensure clean environment
+        ${if packages != [] then ''export PYTHONPATH="${builtins.concatStringsSep ":" (map (pkg: "${pkg}/lib/python3.12/site-packages") packages)}:${testDepsEnv}/lib/python3.12/site-packages"'' else ''export PYTHONPATH="${testDepsEnv}/lib/python3.12/site-packages"''}
 
         export PATH="${testDepsEnv}/bin:$PATH"
 

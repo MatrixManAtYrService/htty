@@ -1,77 +1,46 @@
-# CLI package - provides both 'ht' (Rust binary) and 'htty' (Python CLI)
-# But doesn't alter the python environment re: imports
-{ inputs, pkgs, ... }:
+# CLI package - provides 'htty' command without altering Python environment
+{ pkgs, perSystem, ... }:
 
 let
-  # Get project metadata
-  cargoToml = builtins.fromTOML (builtins.readFile ../../Cargo.toml);
+  # Get the complete htty environment
+  httyEnv = perSystem.self.htty;
+
+  # Get project metadata for version
+  cargoToml = builtins.fromTOML (builtins.readFile ../../htty-core/Cargo.toml);
   inherit (cargoToml.package) version;
-
-  # Get overlays for Rust
-  overlays = [ inputs.rust-overlay.overlays.default ];
-  pkgsWithRust = import inputs.nixpkgs {
-    inherit (pkgs.stdenv.hostPlatform) system;
-    inherit overlays;
-  };
-
-  rustToolchain = pkgsWithRust.rust-bin.stable.latest.default.override {
-    extensions = [ "rust-src" ];
-  };
-
-  # Get the htty Python library environment (has htty installed)
-  httyPylib = inputs.self.packages.${pkgs.system}.htty-pylib;
-
 in
-# Build ht binary and create wrapper for htty CLI
-pkgsWithRust.stdenv.mkDerivation {
+
+pkgs.stdenv.mkDerivation {
   pname = "htty-cli";
   inherit version;
-  src = ../..;
 
-  cargoDeps = pkgsWithRust.rustPlatform.importCargoLock {
-    lockFile = ../../Cargo.lock;
-  };
+  # Dummy source since we're just creating a wrapper
+  src = pkgs.writeText "dummy-source" "";
 
-  nativeBuildInputs = with pkgsWithRust; [
-    rustToolchain
-    pkg-config
-    rustPlatform.cargoSetupHook
-  ];
-
-  buildInputs = pkgs.lib.optionals pkgs.stdenv.isDarwin [
-    pkgs.libiconv
-    pkgs.darwin.apple_sdk.frameworks.Foundation
-  ];
-
-  buildPhase = ''
-    runHook preBuild
-
-    # Build just the CLI binary (no Python bindings)
-    cargo build --release --bin ht
-
-    runHook postBuild
-  '';
+  dontUnpack = true;
+  dontBuild = true;
 
   installPhase = ''
-        runHook preInstall
+    runHook preInstall
 
-        # Install the Rust binary
-        mkdir -p $out/bin
-        cp target/release/ht $out/bin/
+    # Create bin directory
+    mkdir -p $out/bin
 
-        # Create htty CLI wrapper that uses the Python library environment
-        cat > $out/bin/htty << 'EOF'
+    # Create htty CLI wrapper that doesn't expose Python modules
+    cat > $out/bin/htty << EOF
     #!/usr/bin/env bash
     # htty CLI - synchronous batch mode for scripting
-    exec ${httyPylib}/bin/python -m htty "$@"
+    # Clear PYTHONPATH to prevent Python environment pollution
+    unset PYTHONPATH
+    exec ${httyEnv}/bin/python -m htty "\$@"
     EOF
-        chmod +x $out/bin/htty
+    chmod +x $out/bin/htty
 
-        runHook postInstall
+    runHook postInstall
   '';
 
   meta = with pkgs.lib; {
-    description = "Headless Terminal - CLI tools (ht + htty)";
+    description = "Headless Terminal - CLI tool (htty only)";
     homepage = "https://github.com/MatrixManAtYrService/ht";
     license = licenses.mit;
     platforms = platforms.unix;

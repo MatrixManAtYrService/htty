@@ -1,0 +1,11 @@
+[project]
+name = "htty-env"
+version = "0.1.0"
+description = "Environment for building htty Python wrapper package"
+dependencies = [
+    "htty_core",  # Will be overridden to use our built wheel
+    "ansi2html",  # Runtime dependency for htty
+]
+
+[tool.uv]
+dev-dependencies = []

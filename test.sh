@@ -101,21 +101,24 @@ echo "✅ All fast analyzers passed! Running tests..."
 set -e
 
 # Rust unit tests (JSON parsing, key handling, etc.)
-run_cargo_test nix develop . --command cargo test
+run_cargo_test nix develop . --command bash -c "cd htty-core && cargo test"
 
 # Things that should be true even when nothing is installed
 # e.g. nix-shell commands that reference this flake still work
 run_pytest nix develop .#pytest-empty --command pytest -m empty tests/env_tests/
 
-# Tests that don't need the rust parts
-run_pytest nix develop .#pytest-sdist --command pytest -m sdist
+# Tests that only need htty-core (Rust binary + minimal Python bindings)
+run_pytest nix develop .#pytest-core --command pytest -m core
 
-# Tests that need both parts
-run_pytest nix develop .#pytest-wheel --command pytest -m wheel
+# Tests that don't need the rust parts (pure Python with mocked htty_core)
+run_pytest nix develop .#pytest-sdist --command pytest -m sdist
 
 # This flake outputs a CLI package for users that just want to run commands
 # but don't want to modify their python environment
 run_pytest nix develop .#pytest-cli --command pytest -m cli tests/env_tests/ tests/cli_tests
+
+# Tests that need the complete environment (htty-core + htty wrapper)
+run_pytest nix develop .#pytest-full --command pytest -m full
 
 
 # for more info, try running these like

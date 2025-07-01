@@ -17,7 +17,16 @@ version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "ansi2html" },
+    { name = "htty-core" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "ansi2html" }]
+requires-dist = [
+    { name = "ansi2html" },
+    { name = "htty-core", directory = "../htty-core" },
+]
+
+[[package]]
+name = "htty-core"
+version = "0.3.0"
+source = { directory = "../htty-core" }

@@ -207,6 +207,15 @@ htty is built on top of a Rust binary that:
 
 The Python library communicates with this Rust binary via JSON over stdin/stdout, providing a clean API for terminal automation.
 
+## Package Architecture
+
+This project uses a two-package distribution to work around maturin limitations:
+
+- **[htty](htty/README.md)** - The main package you want to install. Provides the full Python API and `htty` command-line tool.
+- **[htty-core](htty-core/README.md)** - Contains the Rust binary with minimal Python bindings. Automatically installed as a dependency of `htty`.
+
+When you `pip install htty`, you get both packages automatically. The `htty` package provides the user-facing API while `htty-core` handles the low-level terminal automation.
+
 ## Comparison to Other Tools
 
 | Tool | Use Case | Pros | Cons |

@@ -5,8 +5,7 @@ import subprocess
 import pytest
 
 
-@pytest.mark.wheel
-@pytest.mark.cli
+@pytest.mark.full
 def test_has_ht():
     """Test that ht command is available"""
     result = subprocess.run(["ht", "--help"], capture_output=True, text=True)
@@ -16,6 +15,7 @@ def test_has_ht():
 
 @pytest.mark.empty
 @pytest.mark.sdist
+@pytest.mark.cli
 def test_has_no_ht():
     """Test that ht command is not available"""
     try:
@@ -23,12 +23,12 @@ def test_has_no_ht():
         # If command exists but fails, check exit code
         assert result.returncode != 0, "ht command should fail in this environment"
     except FileNotFoundError:
-        # Command not found (expected in empty/sdist environments)
+        # Command not found (expected in empty/sdist/cli environments)
         pass
 
 
 @pytest.mark.cli
-@pytest.mark.wheel
+@pytest.mark.full
 def test_has_htty():
     """Test that htty command is available"""
     try:
@@ -37,7 +37,9 @@ def test_has_htty():
         assert result.returncode == 0, f"htty command should work: {result.stderr}"
     except FileNotFoundError:
         # Command not found - this is the issue that needs to be fixed in wheel environment
-        pytest.fail("htty command not found - this indicates the PATH issue that needs to be fixed")
+        pytest.fail(
+            "htty command not found - this indicates the PATH issue that needs to be fixed"
+        )
 
 
 @pytest.mark.empty
