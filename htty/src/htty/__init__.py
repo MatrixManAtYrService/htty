@@ -7,7 +7,6 @@ and asynchronous library access for subprocess interaction.
 This is a fork of ht with enhanced Python integration and reliable subprocess management.
 """
 
-from ._find_ht import find_ht_bin
 from .core import (
     HTProcess,
     SnapshotResult,
@@ -31,7 +30,6 @@ __all__ = [
     "run",
     "terminal_session",
     "get_ht_help",
-    "find_ht_bin",
     "SubprocessController",
     "key_to_string",
     "keys_to_strings",

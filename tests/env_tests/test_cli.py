@@ -14,7 +14,6 @@ def test_has_ht():
 
 
 @pytest.mark.empty
-@pytest.mark.cli
 def test_has_no_ht():
     """Test that ht command is not available"""
     try:

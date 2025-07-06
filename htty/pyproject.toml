@@ -40,7 +40,6 @@ Repository = "https://github.com/MatrixManAtYrService/ht"
 Issues = "https://github.com/MatrixManAtYrService/ht/issues"
 
 [project.scripts]
-ht = "htty.cli:ht_passthrough"
 htty = "htty.cli:htty_sync"
 
 [build-system]

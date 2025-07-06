@@ -35,6 +35,7 @@ build-backend = "maturin"
 [tool.maturin]
 python-source = "src/python"
 strip = true
+bindings = "bin"
 include = [
     { path = "target/release/ht", format = "wheel" }
 ]

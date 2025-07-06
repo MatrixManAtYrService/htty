@@ -18,8 +18,8 @@ import time
 from contextlib import contextmanager, suppress
 from typing import Any, Optional, Union
 
-# Import binary finder from htty_core package (from htty-core wheel)
-from htty_core import find_ht_binary
+# Import from htty_core package (from htty-core wheel)
+from htty_core import HtArgs, HtEvent, find_ht_binary, run as htty_core_run
 
 from .html_utils import simple_ansi_to_html
 from .keys import KeyInput, keys_to_strings
@@ -493,55 +493,37 @@ def run(
     # Use provided logger or fall back to default
     process_logger = logger or default_logger
 
-    ht_binary = find_ht_binary()
-
-    # Handle both string commands and pre-split argument lists
-    cmd_args = command.split() if isinstance(command, str) else command
-
     # Create a queue for events
     event_queue: queue.Queue[dict[str, Any]] = queue.Queue()
 
-    # Build the ht command with event subscription
+    # Build the ht subscription list
     base_subscribes = [
-        "init",
-        "snapshot",
-        "output",
-        "resize",
-        "pid",
-        "exitCode",
-        "commandCompleted",
+        HtEvent.INIT,
+        HtEvent.SNAPSHOT,
+        HtEvent.OUTPUT,
+        HtEvent.RESIZE,
+        HtEvent.PID,
+        HtEvent.EXIT_CODE,
+        HtEvent.COMMAND_COMPLETED,
     ]
     if extra_subscribes:
-        base_subscribes.extend(extra_subscribes)
+        # Convert string subscribes to HtEvent enum values
+        for sub in extra_subscribes:
+            try:
+                base_subscribes.append(HtEvent(sub))
+            except ValueError:
+                process_logger.warning(f"Unknown subscription event: {sub}")
 
-    ht_cmd_args = [
-        ht_binary,
-        "--subscribe",
-        ",".join(base_subscribes),
-    ]
-
-    # Add size options if specified
-    if rows is not None and cols is not None:
-        ht_cmd_args.extend(["--size", f"{cols}x{rows}"])
-
-    # Note: --no-exit and --wait-for-output options are not supported in this version
-    # They've been removed from this implementation
-
-    # Add separator and the command to run
-    ht_cmd_args.append("--")
-    ht_cmd_args.extend(cmd_args)
-
-    # Launch ht with debug logging
-    process_logger.debug(f"Launching: {' '.join(ht_cmd_args)}")
-
-    ht_proc = subprocess.Popen(
-        ht_cmd_args,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        bufsize=1,
+    # Create HtArgs and use htty_core.run()
+    ht_args = HtArgs(
+        command=command,
+        subscribes=base_subscribes,
+        rows=rows,
+        cols=cols,
     )
+
+    process_logger.debug(f"Launching ht process with args: {ht_args}")
+    ht_proc = htty_core_run(ht_args)
 
     process_logger.debug(f"ht started: PID {ht_proc.pid}")
 
@@ -601,10 +583,11 @@ def run(
         thread_logger.debug(f"Reader thread exiting for ht process {ht_proc.pid}")
 
     # Create an HTProcess instance
+    command_str = " ".join(command) if isinstance(command, list) else command
     process = HTProcess(
         ht_proc,
         event_queue,
-        command=" ".join(cmd_args),
+        command=command_str,
         rows=rows,
         cols=cols,
         no_exit=no_exit,

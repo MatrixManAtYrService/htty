@@ -1,10 +1,10 @@
 """
 htty-core: Core headless terminal functionality with bundled ht binary.
 
-This package provides the core HTProcess class and handles finding the bundled ht binary.
+This package provides the minimal interface for running ht processes.
 """
 
-from .core import HTProcess, create_process, find_ht_binary
+from .core import HtArgs, HtEvent, find_ht_binary, run
 
-__all__ = ["HTProcess", "create_process", "find_ht_binary"]
+__all__ = ["HtArgs", "HtEvent", "find_ht_binary", "run"]
 __version__ = "0.3.0"

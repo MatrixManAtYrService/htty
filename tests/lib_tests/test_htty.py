@@ -11,6 +11,7 @@ from textwrap import dedent
 
 import pytest
 
+# These imports are only available in htty environment (pytest-htty)
 from htty import Press, run, terminal_session
 
 

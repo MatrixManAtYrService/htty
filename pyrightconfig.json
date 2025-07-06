@@ -1,4 +1,22 @@
 {
+  "include": [
+    "htty-core/src/python",
+    "htty/src/htty", 
+    "tests"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "**/.*",
+    "**/.git",
+    "**/node_modules",
+    "**/venv",
+    "**/result",
+    "**/target",
+    "**/dist",
+    "**/build",
+    "nix/**",
+    "py-envs/**"
+  ],
   "typeCheckingMode": "strict",
   "reportMissingTypeStubs": "error",
   "reportUnknownMemberType": "error",

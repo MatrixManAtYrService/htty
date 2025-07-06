@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euox pipefail
+set -euo pipefail
 
 # Check if nom (nix output monitor) is available
 if command -v nom &> /dev/null; then
@@ -8,17 +8,16 @@ else
     NIX_CMD="nix"
     echo "🔍 Using nix (nom not found)"
     echo "try: `nix develop --command ./test.sh` for more transparent nix output"
-
 fi
 
+set -x
+
 # Code analysis tools grouped by language
-# These run deadnix, nixpkgs-fmt, statix, ruff-check, ruff-format, trim-whitespace and rust-clippy
+# (nom does not support the run subcommand, so they always use nix)
 nix run .#nix-analysis
 nix run .#rust-analysis
 nix run .#python-analysis
 nix run .#generic-analysis
-
-echo "✅ All fast analyzers passed! Running tests..."
 
 # Tests below are organized from fastest to slowest
 # Rust unit tests (JSON parsing, key handling, etc.)
@@ -29,7 +28,7 @@ $NIX_CMD develop . --command bash -c "cd htty-core && cargo test"
 $NIX_CMD develop .#pytest-empty --command pytest -m empty tests/env_tests/
 
 # Tests that only need htty-core (Rust binary + minimal Python bindings)
-$NIX_CMD develop .#pytest-core --command pytest -m core
+$NIX_CMD develop .#pytest-core --command pytest tests/lib_tests/test_htty_core.py
 
 # Tests that verify htty-core-wheel package produces correct Python wheel
 $NIX_CMD develop .#pytest-wheel --command pytest -m wheel tests/env_tests/

@@ -1,39 +1,18 @@
 #!/usr/bin/env python3
 """
-CLI interface for htty providing two entry points:
-- ht: passthrough to the underlying ht binary (async mode)
-- htty: synchronous batch mode for scripting
+CLI interface for htty providing synchronous batch mode for scripting.
 """
 
 import argparse
 import contextlib
 import logging
-import os
 import sys
 import time
 from typing import Optional
 
 from . import run
-from ._find_ht import find_ht_bin
 from .core import HTProcess
 from .keys import KeyInput
-
-
-def ht_passthrough() -> None:
-    """
-    Entry point for 'ht' command - passes through to the ht binary directly.
-
-    This provides the original async ht interface.
-    """
-    try:
-        ht_binary = find_ht_bin()
-
-        # Replace current process with ht binary
-        os.execv(ht_binary, [ht_binary] + sys.argv[1:])
-
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
 
 
 def parse_keys(keys_str: str, delimiter: str = ",") -> list[KeyInput]:
@@ -225,7 +204,4 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
 
 
 if __name__ == "__main__":
-    if sys.argv[0].endswith("htty") or "htty" in sys.argv[0]:
-        htty_sync()
-    else:
-        ht_passthrough()
+    htty_sync()
