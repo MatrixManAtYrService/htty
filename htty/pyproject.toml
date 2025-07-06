@@ -49,5 +49,10 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/htty"]
 
+[dependency-groups]
+analysis = [
+    "fawltydeps",
+]
+
 [tool.hatch.metadata]
 allow-direct-references = true

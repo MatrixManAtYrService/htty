@@ -7,7 +7,7 @@ requires-python = ">=3.8"
 # Test dependencies only - htty will be provided by htty-pylib
 dependencies = [
     "pytest>=7.0",
-    "pytest-cov>=4.0",
+    "fawltydeps",  # For dependency analysis of all workspaces
     # htty is provided separately by htty-pylib input
 ]
 
@@ -23,6 +23,11 @@ packages = []
 include = [
     "pyproject.toml",
     "conftest.py"
+]
+
+[dependency-groups]
+analysis = [
+    "fawltydeps",
 ]
 
 [tool.pytest.ini_options]

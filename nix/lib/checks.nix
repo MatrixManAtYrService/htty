@@ -233,8 +233,39 @@ let
     verboseCommand = "cd htty-core && cargo clippy --all-targets --all-features --verbose";
   };
 
+  # Function to create fawltydeps check with specific Python environment
+  makeFawltydepsCheck = { pythonEnv, ignoreUndeclared ? [ ], ignoreUnused ? [ ] }:
+    let
+      # Automatically ignore fawltydeps itself since it's never imported by analyzed code
+      allIgnoredUndeclared = ignoreUndeclared ++ [ "fawltydeps" ];
+      allIgnoredUnused = ignoreUnused ++ [ "fawltydeps" ];
+
+      ignoreUndeclaredFlags =
+        if allIgnoredUndeclared != [ ]
+        then builtins.concatStringsSep " " (map (dep: "--ignore-undeclared ${dep}") allIgnoredUndeclared)
+        else "";
+
+      ignoreUnusedFlags =
+        if allIgnoredUnused != [ ]
+        then builtins.concatStringsSep " " (map (dep: "--ignore-unused ${dep}") allIgnoredUnused)
+        else "";
+
+      allFlags = builtins.filter (flag: flag != "") [ ignoreUndeclaredFlags ignoreUnusedFlags ];
+      ignoreFlags = builtins.concatStringsSep " " allFlags;
+
+      baseCommand = "fawltydeps${if ignoreFlags != "" then " " + ignoreFlags else ""}";
+      verboseCmd = "fawltydeps${if ignoreFlags != "" then " " + ignoreFlags else ""} -v";
+    in
+    makeCheck {
+      name = "fawltydeps";
+      description = "Python dependency analysis with FawltyDeps";
+      dependencies = [ pythonEnv ];
+      command = baseCommand;
+      verboseCommand = verboseCmd;
+    };
+
 in
 {
-  inherit makeCheck generateAnalysisScript createAnalysisPackage;
+  inherit makeCheck generateAnalysisScript createAnalysisPackage makeFawltydepsCheck;
   inherit deadnixCheck nixpkgsFmtCheck statixCheck ruffCheckCheck ruffFormatCheck pyrightCheck trimWhitespaceCheck rustClippyCheck;
 }
