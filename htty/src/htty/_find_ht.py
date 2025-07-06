@@ -46,6 +46,4 @@ def find_ht_bin() -> str:
     if path_ht and os.path.isfile(path_ht):
         return path_ht
 
-    raise FileNotFoundError(
-        f"ht binary not found. Searched: {path}, {target_path}, PATH"
-    )
+    raise FileNotFoundError(f"ht binary not found. Searched: {path}, {target_path}, PATH")

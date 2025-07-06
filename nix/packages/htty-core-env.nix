@@ -9,9 +9,7 @@ let
   pyprojectToml = builtins.fromTOML (builtins.readFile ../../htty-core/pyproject.toml);
   inherit (pyprojectToml.project) version;
 
-in
-# Create the Python package first
-let
+  # Create the Python package first
   httyCorePkg = pkgs.python3.pkgs.buildPythonPackage {
     pname = "htty-core";
     inherit version;
@@ -37,7 +35,7 @@ let
 in
 # Return the environment with our package
 (pkgs.python3.withPackages (ps: [ httyCorePkg ])).overrideAttrs (old: {
-  passthru = (old.passthru or {}) // {
-    tests = {};  # Prevent blueprint from auto-generating problematic tests
+  passthru = (old.passthru or { }) // {
+    tests = { }; # Prevent blueprint from auto-generating problematic tests
   };
 })

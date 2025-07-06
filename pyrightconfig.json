@@ -1,0 +1,14 @@
+{
+  "typeCheckingMode": "strict",
+  "reportMissingTypeStubs": "error",
+  "reportUnknownMemberType": "error",
+  "reportUnknownArgumentType": "error",
+  "reportUnknownVariableType": "error",
+  "reportUnknownParameterType": "error",
+  "reportMissingParameterType": "error",
+  "reportMissingReturnType": "error",
+  "reportUntypedFunctionDecorator": "error",
+  "reportUntypedClassDecorator": "error",
+  "reportUntypedBaseClass": "error",
+  "reportUntypedNamedTuple": "error"
+} 

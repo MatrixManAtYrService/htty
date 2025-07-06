@@ -6,8 +6,8 @@ Adapted from the original htty test suite.
 import logging
 import os
 import sys
+from collections.abc import Generator
 from textwrap import dedent
-from typing import Generator
 
 import pytest
 
@@ -88,10 +88,8 @@ def colored_hello_world_script() -> Generator[str, None, None]:
     # Don't delete the file so it can be run manually after tests
 
 
-@pytest.mark.full
-def test_hello_world_with_scrolling(
-    hello_world_script: str, test_logger: logging.Logger
-) -> None:
+@pytest.mark.htty
+def test_hello_world_with_scrolling(hello_world_script: str, test_logger: logging.Logger) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
     proc = run(cmd, rows=3, cols=8, logger=test_logger)
     assert proc.snapshot().text == ("hello   \n        \n        ")
@@ -102,25 +100,21 @@ def test_hello_world_with_scrolling(
     proc.exit()  # Clean up the ht process
 
 
-@pytest.mark.full
-def test_hello_world_after_exit(
-    hello_world_script: str, test_logger: logging.Logger
-) -> None:
+@pytest.mark.htty
+def test_hello_world_after_exit(hello_world_script: str, test_logger: logging.Logger) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
     ht = run(cmd, rows=6, cols=8, logger=test_logger)
     ht.send_keys(Press.ENTER)
     ht.send_keys(Press.ENTER)
     ht.subprocess_controller.wait()
-    assert ht.snapshot().text == (
-        "hello   \n        \nworld   \n        \ngoodbye \n        "
-    )
+    assert ht.snapshot().text == ("hello   \n        \nworld   \n        \ngoodbye \n        ")
 
     exit_code = ht.exit()
     assert ht.subprocess_controller.exit_code == 0
     assert exit_code == 0
 
 
-@pytest.mark.full
+@pytest.mark.htty
 def test_outputs(hello_world_script: str, test_logger: logging.Logger) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
     ht = run(cmd, rows=4, cols=8, logger=test_logger)
@@ -131,16 +125,12 @@ def test_outputs(hello_world_script: str, test_logger: logging.Logger) -> None:
 
     # Be more tolerant of how output gets split across events
     # Just check that we got the expected content across all output events
-    all_output_text = "".join(
-        str(event.get("data", {}).get("seq", "")) for event in ht.get_output()
-    )
+    all_output_text = "".join(str(event.get("data", {}).get("seq", "")) for event in ht.get_output())
 
     # Should contain all the expected text (now that we let it complete)
     assert "hello" in all_output_text, f"Expected 'hello' in output: {all_output_text}"
     assert "world" in all_output_text, f"Expected 'world' in output: {all_output_text}"
-    assert "goodbye" in all_output_text, (
-        f"Expected 'goodbye' in output: {all_output_text}"
-    )
+    assert "goodbye" in all_output_text, f"Expected 'goodbye' in output: {all_output_text}"
 
     # Should have at least some output events
     assert len(ht.get_output()) > 0, "Should have at least one output event"
@@ -148,7 +138,7 @@ def test_outputs(hello_world_script: str, test_logger: logging.Logger) -> None:
     ht.exit()  # Clean up the ht process
 
 
-@pytest.mark.full
+@pytest.mark.htty
 def test_enum_keys_interface(hello_world_script: str) -> None:
     """Test that the new enum keys interface works correctly."""
     cmd = f"{sys.executable} {hello_world_script}"
@@ -159,7 +149,7 @@ def test_enum_keys_interface(hello_world_script: str) -> None:
     proc.exit()  # Clean up the ht process
 
 
-@pytest.mark.full
+@pytest.mark.htty
 def test_html_snapshot_with_colors(colored_hello_world_script: str) -> None:
     """Test that the new SnapshotResult provides HTML with color information."""
     cmd = f"{sys.executable} {colored_hello_world_script}"
@@ -187,7 +177,7 @@ def test_html_snapshot_with_colors(colored_hello_world_script: str) -> None:
     proc.wait(timeout=2.0)
 
 
-@pytest.mark.full
+@pytest.mark.htty
 def test_context_manager(hello_world_script: str) -> None:
     """Test the context manager API for automatic cleanup."""
     cmd = f"{sys.executable} {hello_world_script}"
@@ -200,7 +190,7 @@ def test_context_manager(hello_world_script: str) -> None:
         assert "world" in snapshot.text
 
 
-@pytest.mark.full
+@pytest.mark.htty
 def test_exit_while_subprocess_running(hello_world_script: str) -> None:
     """Test that exit() works reliably even when subprocess is still running."""
     cmd = f"{sys.executable} {hello_world_script}"
@@ -222,7 +212,7 @@ def test_exit_while_subprocess_running(hello_world_script: str) -> None:
     assert proc.ht_proc.poll() is not None, "ht process should have exited"
 
 
-@pytest.mark.full
+@pytest.mark.htty
 def test_exit_after_subprocess_finished(hello_world_script: str) -> None:
     """Test that exit() works when subprocess has already finished."""
     cmd = f"{sys.executable} {hello_world_script}"
@@ -250,7 +240,7 @@ def test_exit_after_subprocess_finished(hello_world_script: str) -> None:
 # CLI Example Tests - These translate CLI examples to Python API usage
 
 
-@pytest.mark.full
+@pytest.mark.htty
 def test_vim_startup_screen() -> None:
     """Test equivalent to: htty --snapshot -- vim | grep "VIM - Vi IMproved" """
     try:
@@ -264,9 +254,7 @@ def test_vim_startup_screen() -> None:
     snapshot = proc.snapshot()
 
     # Look for the line containing "IMproved" (like grep would)
-    improved_line = next(
-        line for line in snapshot.text.split("\n") if "IMproved" in line
-    )
+    improved_line = next(line for line in snapshot.text.split("\n") if "IMproved" in line)
     assert improved_line == "~               VIM - Vi IMproved                 "
 
     # Exit vim
@@ -275,7 +263,7 @@ def test_vim_startup_screen() -> None:
     proc.exit()
 
 
-@pytest.mark.full
+@pytest.mark.htty
 def test_vim_startup_screen_context_manager() -> None:
     """Test equivalent to: htty --snapshot -- vim | grep "VIM - Vi IMproved" (using context manager)"""
     try:
@@ -287,13 +275,11 @@ def test_vim_startup_screen_context_manager() -> None:
         snapshot = proc.snapshot()
         # context manager terminates subprocess on context exit
 
-    improved_line = next(
-        line for line in snapshot.text.split("\n") if "IMproved" in line
-    )
+    improved_line = next(line for line in snapshot.text.split("\n") if "IMproved" in line)
     assert improved_line == "~               VIM - Vi IMproved                 "
 
 
-@pytest.mark.full
+@pytest.mark.htty
 def test_vim_duplicate_line() -> None:
     """Test equivalent to: htty --rows 5 --cols 20 -k 'ihello,Escape' --snapshot
     -k 'Vyp,Escape' --snapshot -k ':q!,Enter' -- vim"""
@@ -323,9 +309,7 @@ def test_vim_duplicate_line() -> None:
     snapshot2 = proc.snapshot()
     text_lines = [line.strip() for line in snapshot2.text.split("\n") if line.strip()]
     hello_lines = [line for line in text_lines if "hello" in line]
-    assert len(hello_lines) >= 2, (
-        f"Expected duplicated 'hello' lines, got: {text_lines}"
-    )
+    assert len(hello_lines) >= 2, f"Expected duplicated 'hello' lines, got: {text_lines}"
 
     # Send keys: ":q!,Enter" (quit without saving)
     proc.send_keys(":q!")

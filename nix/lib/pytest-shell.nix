@@ -55,15 +55,17 @@ pkgs: {
       ] ++ packages # Add the specified packages (e.g., htty environments)
       ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
         pkgs.libiconv
-        pkgs.darwin.apple_sdk.frameworks.Foundation
       ] ++ extraBuildInputs; # Add any extra packages
 
       shellHook = ''
         # Set up Python path: packages first (priority), then test deps
         # Don't inherit existing PYTHONPATH to ensure clean environment
-        ${if packages != [] then ''export PYTHONPATH="${builtins.concatStringsSep ":" (map (pkg: "${pkg}/lib/python3.12/site-packages") packages)}:${testDepsEnv}/lib/python3.12/site-packages"'' else ''export PYTHONPATH="${testDepsEnv}/lib/python3.12/site-packages"''}
+        # Determine the site-packages directory for the selected Python
+        pythonSitePackages="${pkgs.python3.sitePackages}"
 
-        export PATH="${testDepsEnv}/bin:$PATH"
+        ${if packages != [] then ''export PYTHONPATH="${builtins.concatStringsSep ":" (map (pkg: "${pkg}/${pkgs.python3.sitePackages}") packages)}:${testDepsEnv}/${pkgs.python3.sitePackages}"'' else ''export PYTHONPATH="${testDepsEnv}/${pkgs.python3.sitePackages}"''}
+
+        export PATH="${pkgs.python3}/bin:${testDepsEnv}/bin:$PATH"
 
         ${extraShellHook}
       '';

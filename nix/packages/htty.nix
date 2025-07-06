@@ -12,20 +12,27 @@ let
 
   # Override htty_core to use our built wheel
   pyprojectOverrides = final: prev: {
-    htty_core = final.buildPythonPackage {
+    htty-core = pkgs.python3.pkgs.buildPythonPackage {
       pname = "htty-core";
       version = "0.3.0";
       format = "wheel";
       src = httyCoreWheel;
-      
-      # Create dist directory and copy wheel
-      unpackPhase = ''
-        mkdir -p dist
-        cp ${httyCoreWheel}/*.whl dist/
-      '';
-      
-      # No build needed - it's already a wheel
+
+      # Don't build - it's already a wheel
       dontBuild = true;
+      dontConfigure = true;
+
+      # Custom unpack for wheel directory
+      unpackPhase = ''
+        mkdir -p ./dist
+        cp ${httyCoreWheel}/*.whl ./dist/
+        # Create a simple setup for wheel installation
+        sourceRoot="."
+      '';
+
+      meta = {
+        description = "Headless Terminal - Rust binary with Python bindings";
+      };
     };
   };
 
@@ -42,6 +49,8 @@ let
     ]
   );
 
+  # Remove htty_core from workspace deps since we provide it via override
+  workspaceDeps = builtins.removeAttrs workspace.deps.default [ "htty-core" ];
 in
 # Create virtual environment with htty and its dependencies (including htty_core)
-pythonSet.mkVirtualEnv "htty-env" workspace.deps.default
+pythonSet.mkVirtualEnv "htty-env" workspaceDeps

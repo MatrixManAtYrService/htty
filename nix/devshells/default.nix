@@ -34,12 +34,12 @@ pkgsWithRust.mkShell {
     nixpkgs-fmt
     nil
     nixd
+    nom
 
     # Test dependencies
     testVim
   ] ++ pkgsWithRust.lib.optionals pkgsWithRust.stdenv.isDarwin [
     pkgsWithRust.libiconv
-    pkgsWithRust.darwin.apple_sdk.frameworks.Foundation
   ];
 
   shellHook = ''

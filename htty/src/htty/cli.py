@@ -11,7 +11,7 @@ import logging
 import os
 import sys
 import time
-from typing import List, Optional, Tuple
+from typing import Optional
 
 from . import run
 from ._find_ht import find_ht_bin
@@ -36,7 +36,7 @@ def ht_passthrough() -> None:
         sys.exit(1)
 
 
-def parse_keys(keys_str: str, delimiter: str = ",") -> List[KeyInput]:
+def parse_keys(keys_str: str, delimiter: str = ",") -> list[KeyInput]:
     """Parse a key sequence string into individual keys."""
     if not keys_str:
         return []
@@ -129,7 +129,7 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
         return
 
     # Build action sequence from arguments
-    actions: List[Tuple[str, Optional[str]]] = []
+    actions: list[tuple[str, Optional[str]]] = []
 
     # Simple approach: collect all -k and -s in order they appear
     arg_iter = iter(args_before_command)
@@ -146,7 +146,7 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
     try:
         # Set up debug logger if requested
         debug_logger: Optional[logging.Logger] = None
-        extra_subscribes: Optional[List[str]] = None
+        extra_subscribes: Optional[list[str]] = None
 
         if args.debug:
             # Create a debug logger that outputs to stderr
@@ -184,9 +184,7 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
                     # Check if subprocess has completed before sending keys
                     if proc.subprocess_completed or proc.subprocess_exited:
                         if debug_logger:
-                            debug_logger.warning(
-                                f"Subprocess has completed, skipping keys: {action_value}"
-                            )
+                            debug_logger.warning(f"Subprocess has completed, skipping keys: {action_value}")
                         continue
                     proc.send_keys(keys)
                     time.sleep(0.05)  # Small delay after sending keys

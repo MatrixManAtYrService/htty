@@ -10,11 +10,12 @@ import os
 import queue
 import signal
 import subprocess
-import threading
-import time
 import sys
 import sysconfig
-from typing import Any, Dict, List, Optional, Union
+import threading
+import time
+from contextlib import suppress
+from typing import Any, Optional, Union
 
 # Get default logger for this module
 default_logger = logging.getLogger(__name__)
@@ -78,9 +79,7 @@ def find_ht_binary() -> str:
     if path_ht and os.path.isfile(path_ht):
         return path_ht
 
-    raise FileNotFoundError(
-        f"ht binary not found. Searched: {path}, {target_path}, PATH"
-    )
+    raise FileNotFoundError(f"ht binary not found. Searched: {path}, {target_path}, PATH")
 
 
 class SnapshotResult:
@@ -102,10 +101,8 @@ class SubprocessController:
     def terminate(self):
         """Terminate the subprocess if it's running."""
         if self.pid:
-            try:
+            with suppress(ProcessLookupError):
                 os.kill(self.pid, signal.SIGTERM)
-            except ProcessLookupError:
-                pass  # Process already dead
 
 
 class HTProcess:
@@ -118,11 +115,11 @@ class HTProcess:
 
     def __init__(
         self,
-        command: Union[str, List[str]],
+        command: Union[str, list[str]],
         rows: int = 24,
         cols: int = 80,
         logger: Optional[logging.Logger] = None,
-        extra_subscribes: Optional[List[str]] = None,
+        extra_subscribes: Optional[list[str]] = None,
     ):
         self.command = command
         self.rows = rows
@@ -130,15 +127,15 @@ class HTProcess:
         self.logger = logger or default_logger
         self.extra_subscribes = extra_subscribes or []
 
-        self.ht_proc: Optional[subprocess.Popen] = None
+        self.ht_proc: Optional[subprocess.Popen[str]] = None
         self.subprocess_controller = SubprocessController()
         self.subprocess_exited = False
         self.subprocess_completed = False
 
         # Event handling
-        self.event_queue: queue.Queue = queue.Queue()
-        self.output_events: List[Dict[str, Any]] = []
-        self.unknown_events: List[Dict[str, Any]] = []
+        self.event_queue: queue.Queue[dict[str, Any]] = queue.Queue()
+        self.output_events: list[dict[str, Any]] = []
+        self.unknown_events: list[dict[str, Any]] = []
 
         # Start the ht process
         self._start_ht_process()
@@ -197,12 +194,8 @@ class HTProcess:
 
         def read_stdout():
             if self.ht_proc is None:
-                raise RuntimeError(
-                    "ht_proc is None - process was not properly initialized"
-                )
-            self.logger.debug(
-                f"Reader thread started for ht process {self.ht_proc.pid}"
-            )
+                raise RuntimeError("ht_proc is None - process was not properly initialized")
+            self.logger.debug(f"Reader thread started for ht process {self.ht_proc.pid}")
             try:
                 while self.ht_proc.poll() is None:
                     if self.ht_proc.stdout:
@@ -212,20 +205,14 @@ class HTProcess:
                                 event = json.loads(line.strip())
                                 self.event_queue.put(event)
                             except json.JSONDecodeError as e:
-                                self.logger.warning(
-                                    f"Failed to parse JSON from ht: {line.strip()}: {e}"
-                                )
+                                self.logger.warning(f"Failed to parse JSON from ht: {line.strip()}: {e}")
             except Exception as e:
                 self.logger.error(f"Error in stdout reader thread: {e}")
 
         def read_stderr():
             if self.ht_proc is None:
-                raise RuntimeError(
-                    "ht_proc is None - process was not properly initialized"
-                )
-            self.logger.debug(
-                f"Stderr reader thread started for ht process {self.ht_proc.pid}"
-            )
+                raise RuntimeError("ht_proc is None - process was not properly initialized")
+            self.logger.debug(f"Stderr reader thread started for ht process {self.ht_proc.pid}")
             try:
                 while self.ht_proc.poll() is None:
                     if self.ht_proc.stderr:
@@ -257,9 +244,7 @@ class HTProcess:
                 raise RuntimeError("ht process stdin is not available")
         except BrokenPipeError as e:
             self.logger.error(f"Failed to send snapshot request: {e}")
-            raise RuntimeError(
-                "Cannot communicate with ht process (broken pipe). Process may have exited."
-            ) from e
+            raise RuntimeError("Cannot communicate with ht process (broken pipe). Process may have exited.") from e
 
         time.sleep(DEFAULT_SLEEP_AFTER_KEYS)
 
@@ -292,9 +277,7 @@ class HTProcess:
                     self.subprocess_controller.pid = event["data"]["pid"]
             elif event["type"] == "exitCode":
                 self.subprocess_exited = True
-                self.subprocess_controller.exit_code = event.get("data", {}).get(
-                    "exitCode"
-                )
+                self.subprocess_controller.exit_code = event.get("data", {}).get("exitCode")
             elif event["type"] == "commandCompleted":
                 self.subprocess_completed = True
             elif event["type"] == "resize":
@@ -314,7 +297,7 @@ class HTProcess:
             f"ht process may have exited or stopped responding."
         )
 
-    def send_keys(self, keys: List[str]):
+    def send_keys(self, keys: list[str]):
         """Send key sequences to the terminal."""
         if self.ht_proc is None or self.ht_proc.poll() is not None:
             raise RuntimeError("ht process is not running")
@@ -330,9 +313,7 @@ class HTProcess:
             else:
                 raise RuntimeError("ht process stdin is not available")
         except BrokenPipeError as e:
-            raise RuntimeError(
-                "Cannot communicate with ht process (broken pipe)"
-            ) from e
+            raise RuntimeError("Cannot communicate with ht process (broken pipe)") from e
 
         time.sleep(DEFAULT_SLEEP_AFTER_KEYS)
 
@@ -366,11 +347,11 @@ class HTProcess:
 
 
 def create_process(
-    command: Union[str, List[str]],
+    command: Union[str, list[str]],
     rows: int = 24,
     cols: int = 80,
     logger: Optional[logging.Logger] = None,
-    extra_subscribes: Optional[List[str]] = None,
+    extra_subscribes: Optional[list[str]] = None,
 ) -> HTProcess:
     """
     Create and return a new HTProcess.

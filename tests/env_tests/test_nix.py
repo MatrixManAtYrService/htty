@@ -5,7 +5,7 @@ import subprocess
 import pytest
 
 
-@pytest.mark.full
+@pytest.mark.htty
 def test_nix_htty_import():
     """Test that htty package allows Python import"""
     result = subprocess.run(
@@ -15,27 +15,31 @@ def test_nix_htty_import():
         cwd="/Users/matt/src/ht",
     )
 
-    assert result.returncode == 0, (
-        f"Failed to import htty from htty package: {result.stderr}"
-    )
+    assert result.returncode == 0, f"Failed to import htty from htty package: {result.stderr}"
 
 
 @pytest.mark.core
 def test_nix_htty_core_import():
     """Test that htty-core-env package allows Python import"""
     result = subprocess.run(
-        ["nix", "shell", ".#htty-core-env", "--command", "python", "-c", "import htty_core"],
+        [
+            "nix",
+            "shell",
+            ".#htty-core-env",
+            "--command",
+            "python",
+            "-c",
+            "import htty_core",
+        ],
         capture_output=True,
         text=True,
         cwd="/Users/matt/src/ht",
     )
 
-    assert result.returncode == 0, (
-        f"Failed to import htty_core from htty-core-env: {result.stderr}"
-    )
+    assert result.returncode == 0, f"Failed to import htty_core from htty-core-env: {result.stderr}"
 
 
-@pytest.mark.full
+@pytest.mark.htty
 def test_nix_htty_ht_command():
     """Test that htty package provides ht command"""
     result = subprocess.run(
@@ -62,7 +66,7 @@ def test_nix_htty_cli_no_ht_command():
     assert result.returncode != 0, "ht command should not be in PATH for htty-cli package"
 
 
-@pytest.mark.full
+@pytest.mark.htty
 def test_nix_htty_htty_command():
     """Test that htty package provides htty command"""
     result = subprocess.run(
@@ -72,9 +76,7 @@ def test_nix_htty_htty_command():
         cwd="/Users/matt/src/ht",
     )
 
-    assert result.returncode == 0, (
-        f"htty command failed from htty package: {result.stderr}"
-    )
+    assert result.returncode == 0, f"htty command failed from htty package: {result.stderr}"
 
 
 @pytest.mark.cli
@@ -102,7 +104,15 @@ def test_nix_htty_cli_no_python_import():
     # Run from a temporary directory to avoid picking up source code from current directory
     with tempfile.TemporaryDirectory() as temp_dir:
         result = subprocess.run(
-            ["nix", "shell", f"{project_root}#htty-cli", "--command", "python", "-c", "import htty"],
+            [
+                "nix",
+                "shell",
+                f"{project_root}#htty-cli",
+                "--command",
+                "python",
+                "-c",
+                "import htty",
+            ],
             capture_output=True,
             text=True,
             cwd=temp_dir,
@@ -110,9 +120,7 @@ def test_nix_htty_cli_no_python_import():
 
         # Should fail - htty-cli avoids providing Python module access
         assert result.returncode != 0, "htty import should fail from htty-cli package"
-        assert "ModuleNotFoundError" in result.stderr, (
-            f"Expected ModuleNotFoundError, got: {result.stderr}"
-        )
+        assert "ModuleNotFoundError" in result.stderr, f"Expected ModuleNotFoundError, got: {result.stderr}"
 
 
 # Note: htty-py-sdist package has been removed in favor of the htty-core/htty split

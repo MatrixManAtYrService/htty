@@ -4,7 +4,7 @@ Based on the key parsing logic in ht's stdio.rs file.
 """
 
 from enum import Enum
-from typing import List, Union
+from typing import Union
 
 # exclude this module from docs
 __all__ = ["Press", "KeyInput", "key_to_string", "keys_to_strings"]
@@ -77,7 +77,7 @@ def key_to_string(key: KeyInput) -> str:
     return str(key)
 
 
-def keys_to_strings(keys: Union[KeyInput, List[KeyInput]]) -> List[str]:
+def keys_to_strings(keys: Union[KeyInput, list[KeyInput]]) -> list[str]:
     """Convert key inputs to a list of string representations."""
     if isinstance(keys, (str, Press)):
         return [key_to_string(keys)]

@@ -153,10 +153,10 @@ let
 
   ruffCheckCheck = makeCheck {
     name = "ruff-check";
-    description = "Python linting with ruff";
+    description = "Python linting with ruff (auto-fix enabled)";
     dependencies = with pkgs; [ ruff ];
-    command = "ruff check --fix";
-    verboseCommand = "ruff check --fix --verbose";
+    command = "ruff check --fix --unsafe-fixes";
+    verboseCommand = "ruff check --fix --unsafe-fixes --verbose";
   };
 
   ruffFormatCheck = makeCheck {
@@ -221,8 +221,8 @@ let
     name = "pyright";
     description = "Python type checking with pyright";
     dependencies = with pkgs; [ pyright ];
-    command = "nix develop .#pytest-sdist --command pyright";
-    verboseCommand = "nix develop .#pytest-sdist --command pyright --verbose";
+    command = "nix develop .#pytest-htty --command pyright";
+    verboseCommand = "nix develop .#pytest-htty --command pyright --verbose";
   };
 
   rustClippyCheck = makeCheck {

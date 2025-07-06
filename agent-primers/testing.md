@@ -23,31 +23,35 @@ We use pytest marks to explicitly declare what environment each test needs, then
 - **Contains**: htty-core-env (maturin-built wheel)
 - **Use Cases**: Test Python/Rust bridge, basic terminal operations, htty_core module functionality
 
-### `@pytest.mark.sdist` → `pytest-sdist` devshell
-- **Purpose**: Test pure Python htty package without htty-core
-- **Contains**: htty Python package with htty_core dependency removed
-- **Use Cases**: Pure Python logic, mocked testing, argument parsing
-- **Note**: htty_core imports will fail - tests must mock this dependency
+### `@pytest.mark.wheel` → `pytest-wheel` devshell
+- **Purpose**: Test htty-core-wheel package for Python wheel creation
+- **Contains**: htty-core-wheel package for building .whl files
+- **Use Cases**: Verify wheel packaging, metadata files, wheel file naming
 
 ### `@pytest.mark.cli` → `pytest-cli` devshell
 - **Purpose**: Test CLI tools without Python environment pollution
 - **Contains**: htty-cli package (htty command only, no Python modules in PATH)
 - **Use Cases**: Command-line interface testing, verifying no Python environment leakage
 
-### `@pytest.mark.full` → `pytest-full` devshell
+### `@pytest.mark.htty` → `pytest-htty` devshell
 - **Purpose**: Complete integration testing (htty-core + htty wrapper)
-- **Contains**: Complete htty environment + testVim for integration tests
+- **Contains**: Complete htty environment for integration tests
 - **Use Cases**: End-to-end workflows, full integration tests, realistic user scenarios
+
+### `@pytest.mark.sdist` → `pytest-sdist` devshell
+- **Purpose**: Test htty-sdist package for source distribution creation
+- **Contains**: htty-sdist package for building .tar.gz files
+- **Use Cases**: Verify source distribution packaging, metadata files, build artifacts
 
 ## Running Tests
 
 ### Fast Development Iteration
 ```bash
-# Python-only unit tests (3s build, htty_core must be mocked)
-nix develop .#pytest-sdist --command pytest -vs -m sdist
-
 # Core functionality tests (medium build time)
 nix develop .#pytest-core --command pytest -vs -m core
+
+# Wheel packaging tests (fast)
+nix develop .#pytest-wheel --command pytest -vs -m wheel
 
 # CLI tool tests (fast)
 nix develop .#pytest-cli --command pytest -vs -m cli
@@ -55,8 +59,14 @@ nix develop .#pytest-cli --command pytest -vs -m cli
 
 ### Integration Testing
 ```bash
-# Full environment tests (22s build time)
-nix develop .#pytest-full --command pytest -vs -m full
+# Complete environment tests
+nix develop .#pytest-htty --command pytest -vs -m htty
+
+# Wheel packaging tests
+nix develop .#pytest-wheel --command pytest -vs -m wheel
+
+# Source distribution tests
+nix develop .#pytest-sdist --command pytest -vs -m sdist
 
 # External integration tests
 nix develop .#pytest-empty --command pytest -vs -m empty
@@ -67,9 +77,10 @@ nix develop .#pytest-empty --command pytest -vs -m empty
 # Run each test suite in appropriate environment
 nix develop .#pytest-empty --command pytest -vs -m empty
 nix develop .#pytest-core --command pytest -vs -m core
-nix develop .#pytest-sdist --command pytest -vs -m sdist
+nix develop .#pytest-wheel --command pytest -vs -m wheel
 nix develop .#pytest-cli --command pytest -vs -m cli
-nix develop .#pytest-full --command pytest -vs -m full
+nix develop .#pytest-sdist --command pytest -vs -m sdist
+nix develop .#pytest-htty --command pytest -vs -m htty
 ```
 
 ## Test Organization
@@ -89,12 +100,6 @@ Each test file can contain tests with different marks for different layers:
 ```python
 # tests/lib_tests/test_terminal.py
 
-@pytest.mark.sdist
-def test_parse_terminal_size():
-    """Unit test: parse size string (Python-only, mock htty_core)"""
-    # This test must mock htty_core since it's not available
-    assert parse_size("80x24") == (80, 24)
-
 @pytest.mark.core
 def test_htty_core_process():
     """Core test: basic htty_core functionality"""
@@ -102,7 +107,7 @@ def test_htty_core_process():
     proc = htty_core.create_process(["echo", "hello"])
     # Test htty_core directly
 
-@pytest.mark.full
+@pytest.mark.htty
 def test_complete_workflow():
     """Integration test: full htty workflow"""
     import htty
@@ -114,7 +119,7 @@ def test_complete_workflow():
 ## Key Benefits
 
 ### 1. **Fast Iteration**
-- Python changes don't trigger Rust rebuilds in sdist environment
+- Python changes don't trigger Rust rebuilds when using htty package
 - Rust changes only affect environments that need them
 - Each layer can be developed independently
 
@@ -124,18 +129,11 @@ def test_complete_workflow():
 - Easy to debug issues at specific layers
 
 ### 3. **Comprehensive Coverage**
-- Unit tests with mocked dependencies (sdist)
 - Integration tests with real components (core, full)
-- CLI tests without Python pollution (cli)
+- CLI tests without Python environment pollution (cli)
 - External verification tests (empty)
 
 ## When to Use Each Mark
-
-### Use `@pytest.mark.sdist` when:
-- Testing pure Python logic that doesn't need htty_core
-- Working with mocked dependencies
-- Need fastest possible iteration cycles
-- Testing argument parsing, data structures, algorithms
 
 ### Use `@pytest.mark.core` when:
 - Testing htty_core functionality directly
@@ -143,16 +141,28 @@ def test_complete_workflow():
 - Validating basic terminal operations
 - Testing binary integration points
 
+### Use `@pytest.mark.wheel` when:
+- Testing Python wheel packaging
+- Verifying .whl file creation and naming
+- Testing wheel metadata files
+- Validating maturin build outputs
+
 ### Use `@pytest.mark.cli` when:
 - Testing command-line interface behavior
 - Verifying CLI tools work without Python environment issues
 - Testing script integration
 
-### Use `@pytest.mark.full` when:
+### Use `@pytest.mark.htty` when:
 - Testing complete end-to-end workflows
 - Need realistic user environment
 - Testing integration between htty and htty_core
 - Validating final user experience
+
+### Use `@pytest.mark.sdist` when:
+- Testing source distribution packaging
+- Verifying .tar.gz file creation
+- Testing metadata file generation
+- Validating build artifacts
 
 ### Use `@pytest.mark.empty` when:
 - Testing nix package functionality
@@ -161,22 +171,19 @@ def test_complete_workflow():
 
 ## Development Workflow
 
-### Working on Python Logic (htty wrapper)
-```bash
-# Fast feedback loop - mock htty_core in tests
-nix develop .#pytest-sdist --command pytest -vs -m sdist
-```
-
 ### Working on Rust Integration (htty-core)
 ```bash
 # Test Rust+Python bridge
 nix develop .#pytest-core --command pytest -vs -m core
+
+# Test wheel packaging
+nix develop .#pytest-wheel --command pytest -vs -m wheel
 ```
 
 ### Working on Complete Features
 ```bash
-# Full environment for integration work
-nix develop .#pytest-full --command pytest -vs -m full
+# Complete environment for integration work
+nix develop .#pytest-htty --command pytest -vs -m htty
 ```
 
 ### Before Committing
@@ -184,40 +191,30 @@ nix develop .#pytest-full --command pytest -vs -m full
 # Run all test suites to ensure nothing breaks
 nix develop .#pytest-empty --command pytest -vs -m empty
 nix develop .#pytest-core --command pytest -vs -m core
-nix develop .#pytest-sdist --command pytest -vs -m sdist
+nix develop .#pytest-wheel --command pytest -vs -m wheel
 nix develop .#pytest-cli --command pytest -vs -m cli
-nix develop .#pytest-full --command pytest -vs -m full
+nix develop .#pytest-sdist --command pytest -vs -m sdist
+nix develop .#pytest-htty --command pytest -vs -m htty
 ```
 
 ## Fresh Code Guarantee
 
 All environments automatically rebuild when source code changes:
-- **htty-core changes** → Rebuilds: htty-core-wheel → htty-core-env, htty → pytest-core, pytest-full
-- **htty changes** → Rebuilds: htty → pytest-full, pytest-sdist (Python parts)
+- **htty-core changes** → Rebuilds: htty-core-wheel → htty-core-env, htty → pytest-core, pytest-wheel, pytest-htty
+- **htty changes** → Rebuilds: htty → pytest-htty, pytest-sdist
 - **Test changes** → All pytest environments rebuild test dependencies
 
 This ensures you always test fresh code and never encounter stale environment issues.
 
 ## Important Notes
 
-### Mocking in sdist Environment
-The sdist environment removes htty_core dependency, so imports like `import htty_core` will fail. Tests must mock this:
-
-```python
-@pytest.mark.sdist
-def test_with_mocked_core():
-    from unittest.mock import patch
-    with patch('htty.core.htty_core'):
-        # Test htty logic with mocked htty_core
-        pass
-```
-
 ### Environment Isolation
 Each environment provides only what's declared:
 - **pytest-cli**: CLI tools but no Python modules in PYTHONPATH
 - **pytest-empty**: No htty packages at all
-- **pytest-sdist**: Python htty but no htty_core
 - **pytest-core**: Only htty_core, no high-level htty wrapper
-- **pytest-full**: Complete environment
+- **pytest-wheel**: htty-core-wheel package for Python wheel testing
+- **pytest-sdist**: htty-sdist package for source distribution testing
+- **pytest-htty**: Complete environment with htty package
 
 This isolation ensures tests can't accidentally depend on components they shouldn't have access to.
