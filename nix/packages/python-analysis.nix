@@ -3,7 +3,7 @@
 
 let
   lib = flake.lib pkgs;
-  inherit (lib.checks) createAnalysisPackage ruffCheckCheck ruffFormatCheck pyrightCheck makeFawltydepsCheck;
+  inherit (lib.checks) createAnalysisPackage ruffCheckCheck ruffFormatCheck makeFawltydepsCheck;
 
   # Load the test workspace which has fawltydeps as a regular dependency
   testWorkspace = inputs.uv2nix.lib.workspace.loadWorkspace {
@@ -24,7 +24,7 @@ let
 
   # Function to create fawltydeps check for a specific workspace
   # Uses the test environment which has fawltydeps pre-installed
-  makeFawltydepsForWorkspace = { workspaceRoot, name, ignoreUndeclared ? [ ], ignoreUnused ? [ ] }:
+  makeFawltydepsForWorkspace = { workspaceRoot, name, description, ignoreUndeclared ? [ ], ignoreUnused ? [ ] }:
     let
       # Create a wrapper script that uses fawltydeps from test environment to analyze the workspace
       fawltydepsScript = pkgs.writeShellScript "fawltydeps-${name}" ''
@@ -37,16 +37,53 @@ let
         mkdir -p $out/bin
         ln -s ${fawltydepsScript} $out/bin/fawltydeps
       '';
+
+      # Create the check with custom description
+      fawltydepsCheckBase = makeFawltydepsCheck {
+        pythonEnv = pythonEnvWithScript;
+        inherit ignoreUndeclared ignoreUnused;
+      };
     in
-    makeFawltydepsCheck {
-      pythonEnv = pythonEnvWithScript;
-      inherit ignoreUndeclared ignoreUnused;
+    # Override the description to be more specific
+    fawltydepsCheckBase // {
+      inherit description;
     };
+
+  # Create separate pyright checks for each workspace, similar to fawltydeps
+  # Each runs from the repository root but with environment-specific dependencies
+
+  # Create separate pyright checks for each area, similar to fawltydeps
+  # Each specifies exactly what directory it's analyzing
+
+  pyrightHttyCore = lib.checks.makeCheck {
+    name = "pyright-htty-core";
+    description = "Python type checking for htty-core (htty-core/src/python)";
+    dependencies = with pkgs; [ ]; # nix develop provides the environment
+    command = ''nix develop .#pytest-htty --command bash -c "${testEnvWithFawltydeps}/bin/pyright htty-core/src/python"'';
+    verboseCommand = ''nix develop .#pytest-htty --command bash -c "${testEnvWithFawltydeps}/bin/pyright htty-core/src/python --verbose"'';
+  };
+
+  pyrightHtty = lib.checks.makeCheck {
+    name = "pyright-htty";
+    description = "Python type checking for htty (htty/src/htty)";
+    dependencies = with pkgs; [ ]; # nix develop provides the environment
+    command = ''nix develop .#pytest-htty --command bash -c "${testEnvWithFawltydeps}/bin/pyright htty/src/htty"'';
+    verboseCommand = ''nix develop .#pytest-htty --command bash -c "${testEnvWithFawltydeps}/bin/pyright htty/src/htty --verbose"'';
+  };
+
+  pyrightTests = lib.checks.makeCheck {
+    name = "pyright-tests";
+    description = "Python type checking for tests (tests/)";
+    dependencies = with pkgs; [ ]; # nix develop provides the environment
+    command = ''nix develop .#pytest-htty --command bash -c "${testEnvWithFawltydeps}/bin/pyright tests/"'';
+    verboseCommand = ''nix develop .#pytest-htty --command bash -c "${testEnvWithFawltydeps}/bin/pyright tests/ --verbose"'';
+  };
 
   # Create fawltydeps checks for each workspace
   fawltydepsHtty = makeFawltydepsForWorkspace {
     workspaceRoot = ../../htty;
     name = "htty";
+    description = "Python dependency analysis for htty (htty/)";
     ignoreUndeclared = [ "htty_core" ]; # htty_core comes from local reference
     ignoreUnused = [ ];
   };
@@ -54,6 +91,7 @@ let
   fawltydepsHttyCore = makeFawltydepsForWorkspace {
     workspaceRoot = ../../htty-core;
     name = "htty-core";
+    description = "Python dependency analysis for htty-core (htty-core/)";
     ignoreUndeclared = [ ];
     ignoreUnused = [ ];
   };
@@ -61,19 +99,22 @@ let
   fawltydepsTests = makeFawltydepsForWorkspace {
     workspaceRoot = ../../tests;
     name = "tests";
+    description = "Python dependency analysis for tests (tests/)";
     ignoreUndeclared = [ "htty" "htty_core" ]; # These come from test environment
-    ignoreUnused = [ ];
+    ignoreUnused = [ "pyright" ]; # pyright is a tool, not imported
   };
 in
 createAnalysisPackage {
   name = "python-analysis";
   description = "Python code analysis";
   checks = {
-    ruff-check = ruffCheckCheck;
-    ruff-format = ruffFormatCheck;
-    pyright = pyrightCheck;
     fawltydeps-htty = fawltydepsHtty;
     fawltydeps-htty-core = fawltydepsHttyCore;
     fawltydeps-tests = fawltydepsTests;
+    pyright-htty-core = pyrightHttyCore;
+    pyright-htty = pyrightHtty;
+    pyright-tests = pyrightTests;
+    ruff-check = ruffCheckCheck;
+    ruff-format = ruffFormatCheck;
   };
 }

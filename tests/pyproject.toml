@@ -8,6 +8,7 @@ requires-python = ">=3.8"
 dependencies = [
     "pytest>=7.0",
     "fawltydeps",  # For dependency analysis of all workspaces
+    "pyright",     # For type checking all workspaces
     # htty is provided separately by htty-pylib input
 ]
 
