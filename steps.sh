@@ -7,7 +7,7 @@ if command -v nom &> /dev/null; then
 else
     NIX_CMD="nix"
     echo "🔍 Using nix (nom not found)"
-    echo "try: `nix develop --command ./test.sh` for more transparent nix output"
+    echo "try: `nix develop --command ./steps.sh` for more transparent nix output"
 fi
 
 set -x
@@ -46,3 +46,6 @@ $NIX_CMD develop .#pytest-cli --command pytest -m cli tests/env_tests/ tests/cli
 # Additional tests that need the complete environment (htty-core + htty wrapper)
 # These are covered by the pytest-htty environment above, so this line is commented out
 $NIX_CMD develop .#pytest-htty --command pytest -m htty
+
+# Generate API documentation
+nix run .#python-docs

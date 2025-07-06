@@ -9,6 +9,7 @@ dependencies = [
     "pytest>=7.0",
     "fawltydeps",  # For dependency analysis of all workspaces
     "pyright",     # For type checking all workspaces
+    "pdoc",        # For API documentation generation
     # htty is provided separately by htty-pylib input
 ]
 

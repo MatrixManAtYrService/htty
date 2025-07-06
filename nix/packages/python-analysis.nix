@@ -49,12 +49,6 @@ let
       inherit description;
     };
 
-  # Create separate pyright checks for each workspace, similar to fawltydeps
-  # Each runs from the repository root but with environment-specific dependencies
-
-  # Create separate pyright checks for each area, similar to fawltydeps
-  # Each specifies exactly what directory it's analyzing
-
   pyrightHttyCore = lib.checks.makeCheck {
     name = "pyright-htty-core";
     description = "Python type checking for htty-core (htty-core/src/python)";
@@ -101,7 +95,7 @@ let
     name = "tests";
     description = "Python dependency analysis for tests (tests/)";
     ignoreUndeclared = [ "htty" "htty_core" ]; # These come from test environment
-    ignoreUnused = [ "pyright" ]; # pyright is a tool, not imported
+    ignoreUnused = [ "pyright" "pdoc" ]; # some tools are not imported
   };
 in
 createAnalysisPackage {
