@@ -15,32 +15,17 @@ let
     # Ensure docs directory exists
     mkdir -p docs
 
-    # Generate htty-core docs
-    cd htty-core
-    rm -rf docs
-    pdoc --output-directory docs htty_core
-    echo '📚 Generated docs in htty-core/docs/ directory'
-    cd ..
-
-    # Move htty-core docs to main docs directory
-    rm -rf docs/htty-core.g
-    mkdir -p docs/htty-core.g
-    mv htty-core/docs/* docs/htty-core.g/
-
-    # Generate htty docs
+    # Generate htty docs (main docs in root)
     cd htty
-    rm -rf docs
-    pdoc --output-directory docs htty
-    echo '📚 Generated docs in htty/docs/ directory'
+    pdoc --output-directory ../docs htty !htty.keys
+    echo '📚 Generated htty docs in ./docs/ directory'
     cd ..
 
-    # Move htty docs to main docs directory
-    rm -rf docs/htty.g
-    mkdir -p docs/htty.g
-    mv htty/docs/* docs/htty.g/
-
-    # Clean up temporary directories
-    rm -rf htty/docs htty-core/docs
+    # Generate htty-core docs (subdirectory)
+    cd htty-core
+    pdoc --output-directory ../docs/htty-core htty_core
+    echo '📚 Generated htty-core docs in ./docs/htty-core/ directory'
+    cd ..
 
     echo '📚 Documentation has been generated in docs/ directory'
   '';
