@@ -14,6 +14,13 @@ logging.getLogger("htty.core").setLevel(logging.DEBUG)
 
 
 @pytest.fixture
+def project_root() -> Path:
+    """Return the path to the project root directory."""
+    # Get the directory containing this conftest.py file, then go up one level
+    return Path(__file__).parent.parent
+
+
+@pytest.fixture
 def vim_path() -> Path:
     try:
         vim_path = Path(os.environ["HTTY_TEST_VIM_TARGET"])

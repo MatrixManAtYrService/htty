@@ -8,13 +8,13 @@ import pytest
 
 
 @pytest.mark.sdist
-def test_htty_sdist_tgz_output():
+def test_htty_sdist_tgz_output(project_root: Path):
     """Test that htty-sdist produces a .tar.gz file"""
     result = subprocess.run(
         ["nix", "build", ".#htty-sdist", "--no-link", "--print-out-paths"],
         capture_output=True,
         text=True,
-        cwd="/Users/matt/src/ht",
+        cwd=project_root,
     )
 
     assert result.returncode == 0, f"Failed to build htty-sdist: {result.stderr}"
@@ -33,13 +33,13 @@ def test_htty_sdist_tgz_output():
 
 
 @pytest.mark.sdist
-def test_htty_sdist_metadata_files():
+def test_htty_sdist_metadata_files(project_root: Path):
     """Test that htty-sdist produces metadata files"""
     result = subprocess.run(
         ["nix", "build", ".#htty-sdist", "--no-link", "--print-out-paths"],
         capture_output=True,
         text=True,
-        cwd="/Users/matt/src/ht",
+        cwd=project_root,
     )
 
     assert result.returncode == 0, f"Failed to build htty-sdist: {result.stderr}"
@@ -52,13 +52,13 @@ def test_htty_sdist_metadata_files():
 
 
 @pytest.mark.htty
-def test_htty_cli_py_file():
+def test_htty_cli_py_file(project_root: Path):
     """Test that htty package contains cli.py in site-packages"""
     result = subprocess.run(
         ["nix", "build", ".#htty", "--no-link", "--print-out-paths"],
         capture_output=True,
         text=True,
-        cwd="/Users/matt/src/ht",
+        cwd=project_root,
     )
 
     assert result.returncode == 0, f"Failed to build htty: {result.stderr}"
@@ -71,13 +71,13 @@ def test_htty_cli_py_file():
 
 
 @pytest.mark.htty
-def test_htty_ht_binary():
+def test_htty_ht_binary(project_root: Path):
     """Test that htty package contains ht binary"""
     result = subprocess.run(
         ["nix", "build", ".#htty", "--no-link", "--print-out-paths"],
         capture_output=True,
         text=True,
-        cwd="/Users/matt/src/ht",
+        cwd=project_root,
     )
 
     assert result.returncode == 0, f"Failed to build htty: {result.stderr}"
@@ -91,13 +91,13 @@ def test_htty_ht_binary():
 
 
 @pytest.mark.htty
-def test_htty_htty_binary():
+def test_htty_htty_binary(project_root: Path):
     """Test that htty package contains htty binary"""
     result = subprocess.run(
         ["nix", "build", ".#htty", "--no-link", "--print-out-paths"],
         capture_output=True,
         text=True,
-        cwd="/Users/matt/src/ht",
+        cwd=project_root,
     )
 
     assert result.returncode == 0, f"Failed to build htty: {result.stderr}"

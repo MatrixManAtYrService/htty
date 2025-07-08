@@ -8,13 +8,13 @@ import pytest
 
 
 @pytest.mark.wheel
-def test_htty_core_wheel_file_output():
+def test_htty_core_wheel_file_output(project_root: Path):
     """Test that htty-core-wheel produces a .whl file"""
     result = subprocess.run(
         ["nix", "build", ".#htty-core-wheel", "--no-link", "--print-out-paths"],
         capture_output=True,
         text=True,
-        cwd="/Users/matt/src/ht",
+        cwd=project_root,
     )
 
     assert result.returncode == 0, f"Failed to build htty-core-wheel: {result.stderr}"
@@ -34,13 +34,13 @@ def test_htty_core_wheel_file_output():
 
 
 @pytest.mark.wheel
-def test_htty_core_wheel_metadata_files():
+def test_htty_core_wheel_metadata_files(project_root: Path):
     """Test that htty-core-wheel produces metadata files"""
     result = subprocess.run(
         ["nix", "build", ".#htty-core-wheel", "--no-link", "--print-out-paths"],
         capture_output=True,
         text=True,
-        cwd="/Users/matt/src/ht",
+        cwd=project_root,
     )
 
     assert result.returncode == 0, f"Failed to build htty-core-wheel: {result.stderr}"
@@ -53,13 +53,13 @@ def test_htty_core_wheel_metadata_files():
 
 
 @pytest.mark.wheel
-def test_htty_core_wheel_filename_content():
+def test_htty_core_wheel_filename_content(project_root: Path):
     """Test that wheel-filename.txt contains the correct wheel filename"""
     result = subprocess.run(
         ["nix", "build", ".#htty-core-wheel", "--no-link", "--print-out-paths"],
         capture_output=True,
         text=True,
-        cwd="/Users/matt/src/ht",
+        cwd=project_root,
     )
 
     assert result.returncode == 0, f"Failed to build htty-core-wheel: {result.stderr}"
