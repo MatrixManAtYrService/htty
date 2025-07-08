@@ -4,8 +4,6 @@ Tests for htty_core package - core interface functionality.
 These tests only require htty_core and run in the pytest-core environment.
 """
 
-import pytest
-
 # Import htty_core for core interface tests (available in both environments)
 from htty_core import HtArgs, HtEvent
 
@@ -19,21 +17,6 @@ def test_htargs_creation():
     assert HtEvent.PID in args.subscribes
     assert args.rows == 10
     assert args.cols == 20
-
-
-def test_htargs_validation():
-    """Test that HtArgs validates inputs properly."""
-    # Empty command should fail
-    with pytest.raises(ValueError, match="command cannot be empty"):
-        HtArgs(command="", subscribes=[HtEvent.OUTPUT])
-
-    # Empty subscribes should fail
-    with pytest.raises(ValueError, match="subscribes cannot be empty"):
-        HtArgs(command="echo hello", subscribes=[])
-
-    # Mismatched rows/cols should fail
-    with pytest.raises(ValueError, match="both rows and cols must be specified together"):
-        HtArgs(command="echo hello", subscribes=[HtEvent.OUTPUT], rows=10)
 
 
 def test_htevent_enum():

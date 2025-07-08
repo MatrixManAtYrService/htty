@@ -3,14 +3,13 @@ Core htty functionality for terminal automation.
 
 This module provides the main HTProcess class for running and interacting with
 terminal applications through a headless terminal interface.
-
-# Test comment to verify build optimization works
 """
 
 import json
 import logging
 import os
 import queue
+import re
 import signal
 import subprocess
 import threading
@@ -42,6 +41,7 @@ __all__ = [
     "SNAPSHOT_RETRY_TIMEOUT",
     "SUBPROCESS_EXIT_DETECTION_DELAY",
     "MAX_SNAPSHOT_RETRIES",
+    "DEFAULT_EXPECT_TIMEOUT",
 ]
 
 # Constants
@@ -53,6 +53,7 @@ DEFAULT_GRACEFUL_TERMINATION_TIMEOUT = 5.0
 SNAPSHOT_RETRY_TIMEOUT = 0.5
 SUBPROCESS_EXIT_DETECTION_DELAY = 0.2
 MAX_SNAPSHOT_RETRIES = 10
+DEFAULT_EXPECT_TIMEOUT = 5.0
 
 
 class SnapshotResult:
@@ -464,6 +465,135 @@ class HTProcess:
         except Exception:
             return None
 
+    def expect(self, pattern: str, timeout: float = DEFAULT_EXPECT_TIMEOUT) -> None:
+        """
+        Wait for a regex pattern to appear in the terminal output.
+
+        This method efficiently waits for output by monitoring the output events from
+        the ht process rather than polling with snapshots. It checks both the current
+        terminal state (via snapshot) and any new output that arrives.
+
+        Args:
+            pattern: The regex pattern to look for in the terminal output
+            timeout: Maximum time to wait in seconds (default: 5.0)
+
+        Raises:
+            TimeoutError: If the pattern doesn't appear within the timeout period
+            RuntimeError: If the ht process has exited
+        """
+        if self.ht_proc.poll() is not None:
+            raise RuntimeError(f"ht process has exited with code {self.ht_proc.returncode}")
+
+        self.logger.debug(f"Expecting regex pattern: '{pattern}'")
+
+        # Compile the regex pattern
+        try:
+            regex = re.compile(pattern)
+        except re.error as e:
+            raise ValueError(f"Invalid regex pattern '{pattern}': {e}") from e
+
+        # First check current terminal state
+        snapshot = self.snapshot()
+        if regex.search(snapshot.text):
+            self.logger.debug(f"Pattern '{pattern}' found immediately in current terminal state")
+            return
+
+        # Start time for timeout tracking
+        start_time = time.time()
+
+        # Process events until we find the pattern or timeout
+        while True:
+            # Check timeout
+            if time.time() - start_time > timeout:
+                self.logger.debug(f"Pattern '{pattern}' not found in terminal output after {timeout} seconds")
+                raise TimeoutError(f"Pattern '{pattern}' not found within {timeout} seconds")
+
+            try:
+                # Wait for next event with a short timeout to allow checking the overall timeout
+                event = self.event_queue.get(block=True, timeout=0.1)
+            except queue.Empty:
+                continue
+
+            # Process the event
+            if event["type"] == "output":
+                self.output_events.append(event)
+                # Check if pattern appears in this output
+                if "data" in event and "seq" in event["data"] and regex.search(event["data"]["seq"]):
+                    self.logger.debug(f"Pattern '{pattern}' found in output event")
+                    return
+            elif event["type"] == "exitCode":
+                self.subprocess_exited = True
+                self.subprocess_controller.exit_code = event.get("data", {}).get("exitCode")
+                # Don't raise here - the process might have exited after outputting what we want
+            elif event["type"] == "snapshot":
+                # If we get a snapshot event, check its content
+                if "data" in event and "text" in event["data"] and regex.search(event["data"]["text"]):
+                    self.logger.debug(f"Pattern '{pattern}' found in snapshot event")
+                    return
+
+            # Take a new snapshot periodically to catch any missed output
+            if len(self.output_events) % 10 == 0:  # Every 10 events
+                snapshot = self.snapshot()
+                if regex.search(snapshot.text):
+                    self.logger.debug(f"Pattern '{pattern}' found in periodic snapshot")
+                    return
+
+    def expect_absent(self, pattern: str, timeout: float = DEFAULT_EXPECT_TIMEOUT) -> None:
+        """
+        Wait for a regex pattern to disappear from the terminal output.
+
+        This method efficiently waits for output changes by monitoring the output events
+        from the ht process rather than polling with snapshots. It periodically checks
+        the terminal state to verify the pattern is gone.
+
+        Args:
+            pattern: The regex pattern that should disappear from the terminal output
+            timeout: Maximum time to wait in seconds (default: 5.0)
+
+        Raises:
+            TimeoutError: If the pattern doesn't disappear within the timeout period
+            RuntimeError: If the ht process has exited
+        """
+        if self.ht_proc.poll() is not None:
+            raise RuntimeError(f"ht process has exited with code {self.ht_proc.returncode}")
+
+        self.logger.debug(f"Expecting regex pattern to disappear: '{pattern}'")
+
+        # Compile the regex pattern
+        try:
+            regex = re.compile(pattern)
+        except re.error as e:
+            raise ValueError(f"Invalid regex pattern '{pattern}': {e}") from e
+
+        # Start time for timeout tracking
+        start_time = time.time()
+
+        while True:
+            # Take a snapshot to check current state
+            snapshot = self.snapshot()
+            if not regex.search(snapshot.text):
+                self.logger.debug(f"Pattern '{pattern}' is now absent from terminal output")
+                return
+
+            # Check timeout
+            if time.time() - start_time > timeout:
+                self.logger.debug(f"Pattern '{pattern}' still present in terminal output after {timeout} seconds")
+                raise TimeoutError(f"Pattern '{pattern}' still present after {timeout} seconds")
+
+            # Wait for next event with a short timeout
+            try:
+                event = self.event_queue.get(block=True, timeout=0.1)
+            except queue.Empty:
+                continue
+
+            # Process the event
+            if event["type"] == "output":
+                self.output_events.append(event)
+            elif event["type"] == "exitCode":
+                self.subprocess_exited = True
+                self.subprocess_controller.exit_code = event.get("data", {}).get("exitCode")
+                # Don't raise here - the process might have exited after the pattern disappeared
+
 
 def get_ht_help() -> str:
     """Get the help output from the ht binary."""
@@ -514,15 +644,21 @@ def run(
             except ValueError:
                 process_logger.warning(f"Unknown subscription event: {sub}")
 
+    # Convert command to string if it's a list
+    command_str = command if isinstance(command, str) else " ".join(command)
+
     # Create HtArgs and use htty_core.run()
     ht_args = HtArgs(
-        command=command,
+        command=command_str,  # Use the already-formatted command string
         subscribes=base_subscribes,
         rows=rows,
         cols=cols,
     )
 
-    process_logger.debug(f"Launching ht process with args: {ht_args}")
+    # Log the exact command that would be run
+    cmd_args = ht_args.get_command()
+    process_logger.debug(f"Launching command: {' '.join(cmd_args)}")
+
     ht_proc = htty_core_run(ht_args)
 
     process_logger.debug(f"ht started: PID {ht_proc.pid}")
@@ -583,7 +719,6 @@ def run(
         thread_logger.debug(f"Reader thread exiting for ht process {ht_proc.pid}")
 
     # Create an HTProcess instance
-    command_str = " ".join(command) if isinstance(command, list) else command
     process = HTProcess(
         ht_proc,
         event_queue,

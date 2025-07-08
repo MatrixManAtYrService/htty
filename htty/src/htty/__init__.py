@@ -7,7 +7,7 @@ and asynchronous library access for subprocess interaction.
 This is a fork of ht with enhanced Python integration and reliable subprocess management.
 """
 
-from .core import (
+from .ht import (
     HTProcess,
     SnapshotResult,
     SubprocessController,

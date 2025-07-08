@@ -1,0 +1,17 @@
+[[language]]
+name = "python"
+language-servers = ["ruff", "pyright"]
+
+[language.formatter]
+command = "ruff"
+args = ["format", "--stdin-filename", "%"]
+
+[language-server]
+[language-server.pyright]
+command = "pyright-langserver"
+args = ["--stdio"]
+config = {}
+
+[language-server.ruff]
+command = "ruff"
+args = ["server"]

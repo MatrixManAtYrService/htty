@@ -11,7 +11,7 @@ import time
 from typing import Optional
 
 from . import run
-from .core import HTProcess
+from .ht import HTProcess
 from .keys import KeyInput
 
 
@@ -38,7 +38,8 @@ Examples:
   htty -k "hello,Enter" -s -- vim
   htty -r 30 -c 80 -s -k "ihello,Escape" -s -- vim
 
-The -k/--keys and -s/--snapshot options can be used multiple times and will be processed in order.
+The -k/--keys, -s/--snapshot, --expect, and --expect-absent options can be used multiple times and will be
+processed in order.
         """.strip(),
     )
 
@@ -83,6 +84,18 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
         help="Enable debug mode: show ht events and subscribe to debug events",
     )
     parser.add_argument(
+        "--expect",
+        action="append",
+        default=[],
+        help="Wait for a regex pattern to appear in the terminal output. Can be used multiple times.",
+    )
+    parser.add_argument(
+        "--expect-absent",
+        action="append",
+        default=[],
+        help="Wait for a regex pattern to disappear from the terminal output. Can be used multiple times.",
+    )
+    parser.add_argument(
         "command",
         nargs="*",
         help="Command to run (must be preceded by --)",
@@ -121,6 +134,18 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
                 parser.error(f"{arg} requires a value")
         elif arg in ["-s", "--snapshot"]:
             actions.append(("snapshot", None))
+        elif arg == "--expect":
+            try:
+                pattern = next(arg_iter)
+                actions.append(("expect", pattern))
+            except StopIteration:
+                parser.error("--expect requires a REGEX pattern")
+        elif arg == "--expect-absent":
+            try:
+                pattern = next(arg_iter)
+                actions.append(("expect_absent", pattern))
+            except StopIteration:
+                parser.error("--expect-absent requires a REGEX pattern")
 
     try:
         # Set up debug logger if requested
@@ -177,6 +202,18 @@ The -k/--keys and -s/--snapshot options can be used multiple times and will be p
                 except Exception as e:
                     print(f"Error taking snapshot: {e}", file=sys.stderr)
                     print("----")  # Still print separator
+            elif action_type == "expect" and action_value:
+                try:
+                    proc.expect(action_value)
+                except Exception as e:
+                    print(f"Error waiting for pattern '{action_value}': {e}", file=sys.stderr)
+                    sys.exit(1)
+            elif action_type == "expect_absent" and action_value:
+                try:
+                    proc.expect_absent(action_value)
+                except Exception as e:
+                    print(f"Error waiting for pattern '{action_value}' to disappear: {e}", file=sys.stderr)
+                    sys.exit(1)
 
         # Take a final snapshot if none were explicitly requested
         if not any(action_type == "snapshot" for action_type, _ in actions):

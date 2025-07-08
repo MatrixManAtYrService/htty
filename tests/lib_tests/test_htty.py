@@ -4,15 +4,17 @@ Adapted from the original htty test suite.
 """
 
 import logging
-import os
 import sys
+import time
 from collections.abc import Generator
+from pathlib import Path
 from textwrap import dedent
+from time import sleep
 
 import pytest
 
 # These imports are only available in htty environment (pytest-htty)
-from htty import Press, run, terminal_session
+from htty import HTProcess, Press, SnapshotResult, run, terminal_session
 
 
 @pytest.fixture
@@ -34,15 +36,6 @@ def test_logger() -> logging.Logger:
         logger.addHandler(handler)
 
     return logger
-
-
-COLORED_HELLO_WORLD_SCRIPT = """
-print("\\033[31mhello\\033[0m")
-input()
-print("\\033[32mworld\\033[0m")
-input()
-print("\\033[33mgoodbye\\033[0m")
-"""
 
 
 @pytest.fixture
@@ -67,26 +60,6 @@ def hello_world_script() -> Generator[str, None, None]:
     #     os.unlink(script_path)
     # except OSError:
     #     pass
-
-
-@pytest.fixture
-def colored_hello_world_script() -> Generator[str, None, None]:
-    # Use a fixed filename in /tmp so it can be run manually after tests
-    script_path = "/tmp/htty_test_colored_hello_world.py"
-
-    with open(script_path, "w") as f:
-        f.write(
-            dedent("""
-            print("\\033[31mhello\\033[0m")
-            input()
-            print("\\033[32mworld\\033[0m")
-            input()
-            print("\\033[33mgoodbye\\033[0m")
-        """)
-        )
-
-    yield script_path
-    # Don't delete the file so it can be run manually after tests
 
 
 @pytest.mark.htty
@@ -242,17 +215,16 @@ def test_exit_after_subprocess_finished(hello_world_script: str) -> None:
 
 
 @pytest.mark.htty
-def test_vim_startup_screen() -> None:
+def test_vim_startup_screen(vim_path: Path) -> None:
     """Test equivalent to: htty --snapshot -- vim | grep "VIM - Vi IMproved" """
-    try:
-        vim_path = os.environ["HTTY_TEST_VIM_TARGET"]
-    except KeyError:
-        pytest.skip("HTTY_TEST_VIM_TARGET not set - please run in nix devshell")
 
-    proc = run(vim_path, rows=20, cols=50)
+    proc: HTProcess = run(str(vim_path), rows=20, cols=50)
+
+    # Wait for Vim to draw its startup screen
+    time.sleep(0.1)  # Small delay to allow screen drawing
 
     # Take snapshot of vim's startup screen
-    snapshot = proc.snapshot()
+    snapshot: SnapshotResult = proc.snapshot()
 
     # Look for the line containing "IMproved" (like grep would)
     improved_line = next(line for line in snapshot.text.split("\n") if "IMproved" in line)
@@ -265,31 +237,25 @@ def test_vim_startup_screen() -> None:
 
 
 @pytest.mark.htty
-def test_vim_startup_screen_context_manager() -> None:
+def test_vim_startup_screen_context_manager(vim_path: Path) -> None:
     """Test equivalent to: htty --snapshot -- vim | grep "VIM - Vi IMproved" (using context manager)"""
-    try:
-        vim_path = os.environ["HTTY_TEST_VIM_TARGET"]
-    except KeyError:
-        pytest.skip("HTTY_TEST_VIM_TARGET not set - please run in nix devshell")
 
-    with terminal_session(vim_path, rows=20, cols=50) as proc:
-        snapshot = proc.snapshot()
-        # context manager terminates subprocess on context exit
+    with terminal_session(str(vim_path), rows=20, cols=50) as vim:
+        # Small delay to allow vim to draw its startup screen
+        # Without this, we might snapshot before the screen is ready
+        sleep(0.1)
+        startup = vim.snapshot()
 
-    improved_line = next(line for line in snapshot.text.split("\n") if "IMproved" in line)
+    improved_line = next(line for line in startup.text.split("\n") if "IMproved" in line)
     assert improved_line == "~               VIM - Vi IMproved                 "
 
 
 @pytest.mark.htty
-def test_vim_duplicate_line() -> None:
+def test_vim_duplicate_line(vim_path: Path) -> None:
     """Test equivalent to: htty --rows 5 --cols 20 -k 'ihello,Escape' --snapshot
     -k 'Vyp,Escape' --snapshot -k ':q!,Enter' -- vim"""
-    try:
-        vim_path = os.environ["HTTY_TEST_VIM_TARGET"]
-    except KeyError:
-        pytest.skip("HTTY_TEST_VIM_TARGET not set - please run in nix devshell")
 
-    proc = run(vim_path, rows=5, cols=20)
+    proc = run(str(vim_path), rows=5, cols=20)
 
     # Send keys: "ihello,Escape" (enter insert mode, type hello, exit insert mode)
     proc.send_keys("i")
@@ -316,3 +282,57 @@ def test_vim_duplicate_line() -> None:
     proc.send_keys(":q!")
     proc.send_keys(Press.ENTER)
     proc.exit()
+
+
+@pytest.mark.htty
+def test_readme_example(vim_path: Path, test_logger: logging.Logger) -> None:
+    with terminal_session(str(vim_path), rows=20, cols=50, logger=test_logger) as vim:
+        vim.expect("version 9.1.1336")  # wait for vim to finish drawing its startup screen
+        startup = vim.snapshot()
+
+        vim.send_keys("i")
+        vim.send_keys("hello world")
+        vim.send_keys(Press.ESCAPE)
+        vim.expect_absent("INSERT")  # wait for vim to return to normal mode
+        hello = vim.snapshot()
+
+    improved_line = next(line for line in startup.text.splitlines() if "IMproved" in line)
+    assert improved_line == "~               VIM - Vi IMproved                 "
+
+    assert hello.text.split("\n")[0].strip() == "hello world"
+
+
+@pytest.mark.htty
+def test_expect_regex(colored_hello_world_script: str, test_logger: logging.Logger) -> None:
+    """Test that expect and expect_absent support regex patterns."""
+    cmd = f"{sys.executable} {colored_hello_world_script}"
+    with terminal_session(cmd, rows=4, cols=8, logger=test_logger) as proc:
+        proc.expect("^hello\\s*$")  # hello with optional trailing whitespace
+        proc.expect_absent("world")  # no "world" yet
+        proc.send_keys(Press.ENTER)
+        proc.expect("world")  # world appears
+        proc.send_keys(Press.ENTER)
+        proc.expect("goodbye")  # goodbye
+
+
+@pytest.mark.htty
+def test_expect_timeout(colored_hello_world_script: str, test_logger: logging.Logger) -> None:
+    """Test that expect times out if pattern is not found."""
+    cmd = f"{sys.executable} {colored_hello_world_script}"
+    with (
+        pytest.raises(TimeoutError, match=r"Pattern 'nonexistent' not found within \d+\.\d+ seconds"),
+        terminal_session(cmd, rows=4, cols=8, logger=test_logger) as proc,
+    ):
+        proc.expect("nonexistent", timeout=1.0)  # Pattern that will never appear
+
+
+@pytest.mark.htty
+def test_expect_absent_timeout(colored_hello_world_script: str, test_logger: logging.Logger) -> None:
+    """Test that expect_absent times out if pattern doesn't disappear."""
+    cmd = f"{sys.executable} {colored_hello_world_script}"
+    with (
+        pytest.raises(TimeoutError, match=r"Pattern 'hello' still present after \d+\.\d+ seconds"),
+        terminal_session(cmd, rows=4, cols=8, logger=test_logger) as proc,
+    ):
+        proc.expect("hello")  # Wait for hello to appear
+        proc.expect_absent("hello", timeout=1.0)  # It won't disappear until we press Enter

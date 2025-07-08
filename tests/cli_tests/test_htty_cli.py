@@ -154,17 +154,7 @@ def test_send_keys(greeter_script: str) -> None:
 
 
 @pytest.mark.htty
-def test_vim() -> None:
-    try:
-        vim_path = os.environ["HTTY_TEST_VIM_TARGET"]
-    except KeyError:
-        print(
-            "Please run this test in the nix devshell defined in {project_root}/nix/devshell.nix"
-            "doing so will provide a specific version of vim.\n"
-            "To do this, run `nix develop` at the repo root and then run the tests in that shell."
-        )
-        raise
-
+def test_vim(vim_path: Path) -> None:
     cmd = [
         *(sys.executable, "-m"),
         "htty.cli",
@@ -173,7 +163,7 @@ def test_vim() -> None:
         "--snapshot",
         *("-k", ":q!,Enter"),
         "--",
-        vim_path,
+        str(vim_path),
     ]
 
     ran = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
@@ -198,8 +188,8 @@ def test_vim() -> None:
                     "~            by Bram Moolenaar et al.",
                     "~  Vim is open source and freely distributable",
                     "~",
-                    re.compile(r"~.*"),  # Variable vim message line 1
-                    re.compile(r"~.*"),  # Variable vim message line 2
+                    re.compile(r"~.*"),  # Variable message line 1
+                    re.compile(r"~ type  :help .*"),  # Variable help command
                     "~",
                     "~ type  :q<Enter>               to exit",
                     "~ type  :help<Enter>  or  <F1>  for on-line help",
@@ -243,6 +233,16 @@ def test_vim() -> None:
             ),
         ],
     )
+
+    # Clean up vim
+    cleanup_cmd = [
+        *(sys.executable, "-m"),
+        "htty.cli",
+        *("-k", ":q!,Enter"),
+        "--",
+        str(vim_path),
+    ]
+    subprocess.run(cleanup_cmd, check=True, env=env)
 
 
 @pytest.mark.htty
@@ -289,3 +289,137 @@ def test_empty_line_preservation():
 
     finally:
         os.unlink(script_path)
+
+
+@pytest.mark.htty
+def test_readme_example_cli(vim_path: Path) -> None:
+    """Test the readme example using CLI arguments instead of Python API."""
+    cmd = [
+        *(sys.executable, "-m"),
+        "htty.cli",
+        *("-r", "20"),  # rows
+        *("-c", "50"),  # cols
+        *("--expect", "version 9.1.1336"),  # wait for vim to finish drawing startup screen
+        "--snapshot",  # capture startup screen
+        *("-k", "i"),  # enter insert mode
+        *("-k", "hello world"),  # type text
+        *("-k", "Escape"),  # exit insert mode
+        *("--expect-absent", "INSERT"),  # wait for INSERT mode indicator to disappear
+        "--snapshot",  # capture final screen
+        "--",
+        str(vim_path),
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
+
+    # Parse the snapshots
+    snapshots = result.stdout.split("----\n")
+    snapshots = [s for s in snapshots if s.strip()]
+    assert len(snapshots) == 2, f"Expected 2 snapshots, got {len(snapshots)}"
+
+    # Test startup screen snapshot
+    assert terminal_contents(
+        actual_snapshots=snapshots[0],
+        expected_patterns=[
+            Pattern(
+                lines=[
+                    "",
+                    "~",
+                    "~",
+                    "~",
+                    "~               VIM - Vi IMproved",
+                    "~",
+                    "~                version 9.1.1336",
+                    "~            by Bram Moolenaar et al.",
+                    "~  Vim is open source and freely distributable",
+                    "~",
+                    re.compile(r"~.*"),  # Variable message line 1
+                    re.compile(r"~ type  :help .*"),  # Variable help command
+                    "~",
+                    "~ type  :q<Enter>               to exit",
+                    "~ type  :help<Enter>  or  <F1>  for on-line help",
+                    "~ type  :help version9<Enter>   for version info",
+                    "~",
+                    "~",
+                    "~",
+                    "                                0,0-1         All",
+                ],
+            ),
+        ],
+    )
+
+    # Test final screen snapshot
+    assert terminal_contents(
+        actual_snapshots=snapshots[1],
+        expected_patterns=[
+            Pattern(
+                lines=[
+                    "hello world",
+                    "~",
+                    "~",
+                    "~",
+                    "~",
+                    "~",
+                    "~",
+                    "~",
+                    "~",
+                    "~",
+                    "~",
+                    "~",
+                    "~",
+                    "~",
+                    "~",
+                    "~",
+                    "~",
+                    "~",
+                    "~",
+                    "                                1,11          All",
+                ],
+            ),
+        ],
+    )
+
+    # Clean up vim
+    cleanup_cmd = [
+        *(sys.executable, "-m"),
+        "htty.cli",
+        *("-k", ":q!,Enter"),
+        "--",
+        str(vim_path),
+    ]
+    subprocess.run(cleanup_cmd, check=True, env=env)
+
+
+@pytest.mark.htty
+def test_expect_regex_cli(colored_hello_world_script: str) -> None:
+    """Test the regex expect/expect-absent functionality using CLI arguments."""
+    cmd = [
+        *(sys.executable, "-m"),
+        "htty.cli",
+        *("-r", "4"),  # rows
+        *("-c", "8"),  # cols
+        *("--expect", "hello"),  # wait for "hello" to appear (simpler pattern)
+        "--snapshot",  # capture hello screen
+        *("-k", "Enter"),  # press enter
+        *("--expect", "world"),  # wait for "world" to appear
+        "--snapshot",  # capture world screen
+        *("-k", "Enter"),  # press enter
+        *("--expect", "goodbye"),  # wait for "goodbye" to appear
+        "--snapshot",  # capture final screen
+        "--",
+        sys.executable,  # Run with Python
+        colored_hello_world_script,
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
+
+    # Parse the snapshots
+    snapshots = result.stdout.split("----\n")
+    snapshots = [s for s in snapshots if s.strip()]
+    assert len(snapshots) == 3, f"Expected 3 snapshots, got {len(snapshots)}"
+
+    # Just check that the text contains the expected words -
+    # don't worry about exact ANSI sequences which can vary
+    assert "hello" in snapshots[0]
+    assert "world" in snapshots[1]
+    assert "goodbye" in snapshots[2]

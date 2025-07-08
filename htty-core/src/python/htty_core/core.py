@@ -7,7 +7,6 @@ This module provides the minimal interface for running ht processes.
 import os
 import subprocess
 import sysconfig
-from dataclasses import dataclass
 from enum import StrEnum
 from typing import Optional, Union
 
@@ -32,27 +31,52 @@ class HtEvent(StrEnum):
     DEBUG = "debug"
 
 
-@dataclass
 class HtArgs:
     """Arguments for running an ht process."""
 
-    command: Union[str, list[str]]
-    subscribes: list[HtEvent]
-    rows: Optional[int] = None
-    cols: Optional[int] = None
+    def __init__(
+        self,
+        command: Union[str, list[str]],
+        subscribes: Optional[list[HtEvent]] = None,
+        rows: Optional[int] = None,
+        cols: Optional[int] = None,
+    ) -> None:
+        self.command = command
+        self.subscribes = subscribes or []
+        self.rows = rows
+        self.cols = cols
 
-    def __post_init__(self):
-        """Validate arguments after initialization."""
-        if not self.command:
-            raise ValueError("command cannot be empty")
-        if not self.subscribes:
-            raise ValueError("subscribes cannot be empty")
-        if self.rows is not None and self.rows <= 0:
-            raise ValueError("rows must be positive")
-        if self.cols is not None and self.cols <= 0:
-            raise ValueError("cols must be positive")
-        if (self.rows is None) != (self.cols is None):
-            raise ValueError("both rows and cols must be specified together, or neither")
+    def get_command(self, ht_binary: Optional[str] = None) -> list[str]:
+        """Build the command line arguments for running ht.
+
+        Args:
+            ht_binary: Optional path to ht binary. If not provided, find_ht_binary() will be called.
+
+        Returns:
+            List of command arguments that would be passed to subprocess.Popen
+        """
+        if ht_binary is None:
+            ht_binary = find_ht_binary()
+
+        cmd_args = [ht_binary]
+
+        # Add subscription arguments
+        if self.subscribes:
+            subscribe_strings = [event.value for event in self.subscribes]
+            cmd_args.extend(["--subscribe", ",".join(subscribe_strings)])
+
+        # Add size arguments if specified
+        if self.rows is not None and self.cols is not None:
+            cmd_args.extend(["--size", f"{self.cols}x{self.rows}"])
+
+        # Add separator and the command to run
+        cmd_args.append("--")
+        if isinstance(self.command, str):
+            cmd_args.extend(self.command.split())
+        else:
+            cmd_args.extend(self.command)
+
+        return cmd_args
 
 
 def find_ht_binary() -> str:
@@ -90,26 +114,7 @@ def run(args: HtArgs) -> subprocess.Popen[str]:
     Returns a subprocess.Popen object representing the running ht process.
     The caller is responsible for managing the process lifecycle.
     """
-    ht_binary = find_ht_binary()
-
-    # Build command arguments
-    cmd_args = [ht_binary]
-
-    # Add subscription arguments
-    if args.subscribes:
-        subscribe_strings = [event.value for event in args.subscribes]
-        cmd_args.extend(["--subscribe", ",".join(subscribe_strings)])
-
-    # Add size arguments if specified
-    if args.rows is not None and args.cols is not None:
-        cmd_args.extend(["--size", f"{args.cols}x{args.rows}"])
-
-    # Add separator and the command to run
-    cmd_args.append("--")
-    if isinstance(args.command, str):
-        cmd_args.extend(args.command.split())
-    else:
-        cmd_args.extend(args.command)
+    cmd_args = args.get_command()
 
     # Start the process
     return subprocess.Popen(
