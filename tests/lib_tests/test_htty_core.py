@@ -1,10 +1,3 @@
-"""
-Tests for htty_core package - core interface functionality.
-
-These tests only require htty_core and run in the pytest-core environment.
-"""
-
-# Import htty_core for core interface tests (available in both environments)
 from htty_core import HtArgs, HtEvent
 
 

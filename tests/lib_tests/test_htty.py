@@ -13,7 +13,6 @@ from time import sleep
 
 import pytest
 
-# These imports are only available in htty environment (pytest-htty)
 from htty import HTProcess, Press, SnapshotResult, run, terminal_session
 
 

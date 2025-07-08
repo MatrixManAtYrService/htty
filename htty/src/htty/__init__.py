@@ -25,6 +25,7 @@ from .keys import (
 __all__ = [
     "HTProcess",
     "SnapshotResult",
+    "Press",
     "KeyInput",
     "run",
     "terminal_session",

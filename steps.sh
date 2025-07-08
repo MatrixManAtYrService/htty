@@ -21,7 +21,7 @@ nix run .#generic-analysis
 
 # Tests below are organized from fastest to slowest
 # Rust unit tests (JSON parsing, key handling, etc.)
-$NIX_CMD develop . --command bash -c "cd htty-core && cargo test"
+$NIX_CMD develop .# --command bash -c "cd htty-core && cargo test"
 
 # Things that should be true even when nothing is installed
 # e.g. nix-shell commands that reference this flake still work
