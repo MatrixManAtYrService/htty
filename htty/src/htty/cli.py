@@ -10,8 +10,7 @@ import sys
 import time
 from typing import Optional
 
-from . import run
-from .ht import HTProcess
+from .ht import HtWrapper, run
 from .keys import KeyInput
 
 
@@ -169,7 +168,7 @@ processed in order.
             extra_subscribes = ["debug"]
 
         # Start the ht process
-        proc: HTProcess = run(
+        proc: HtWrapper = run(
             command,
             rows=args.rows,
             cols=args.cols,
@@ -186,7 +185,7 @@ processed in order.
                 keys = parse_keys(action_value, args.delimiter)
                 if keys:
                     # Check if subprocess has completed before sending keys
-                    if proc.subprocess_completed or proc.subprocess_exited:
+                    if proc.cmd.completed or proc.cmd.exit_code is not None:
                         if debug_logger:
                             debug_logger.warning(f"Subprocess has completed, skipping keys: {action_value}")
                         continue
@@ -228,12 +227,12 @@ processed in order.
 
         # Clean exit
         try:
-            proc.exit(timeout=5.0)
+            proc.ht.exit(timeout=5.0)
         except Exception:
             # Force cleanup if needed
-            if hasattr(proc, "subprocess_controller"):
+            if hasattr(proc, "cmd"):
                 with contextlib.suppress(Exception):
-                    proc.subprocess_controller.terminate()
+                    proc.cmd.terminate()
 
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)

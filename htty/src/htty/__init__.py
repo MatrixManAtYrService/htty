@@ -1,38 +1,15 @@
 """
-htty - Headless Terminal Python Library
-
-A Python library for terminal automation, providing both synchronous CLI tools
-and asynchronous library access for subprocess interaction.
-
-This is a fork of ht with enhanced Python integration and reliable subprocess management.
+htty - a wrapper around [ht](https://github.com/andyk/ht)
 """
 
-from .ht import (
-    HTProcess,
+import htty.keys as keys
+from htty.ht import (
+    HtWrapper,
+    ProcessController,
     SnapshotResult,
-    SubprocessController,
-    get_ht_help,
     run,
     terminal_session,
 )
-from .keys import (
-    KeyInput,
-    Press,
-    key_to_string,
-    keys_to_strings,
-)
+from htty.keys import Press
 
-__all__ = [
-    "HTProcess",
-    "SnapshotResult",
-    "Press",
-    "KeyInput",
-    "run",
-    "terminal_session",
-    "get_ht_help",
-    "SubprocessController",
-    "key_to_string",
-    "keys_to_strings",
-]
-
-__version__ = "0.3.0"
+__all__ = ["terminal_session", "run", "HtWrapper", "ProcessController", "SnapshotResult", "Press", "keys"]

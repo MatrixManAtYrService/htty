@@ -17,7 +17,7 @@ let
 
     # Generate htty docs (main docs in root)
     cd htty
-    pdoc --output-directory ../docs htty !htty.keys
+    pdoc --output-directory ../docs --template-directory ../docs/templates htty !htty.keys
     echo '📚 Generated htty docs in ./docs/ directory'
     cd ..
 

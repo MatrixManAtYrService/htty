@@ -6,11 +6,10 @@ Based on the key parsing logic in ht's stdio.rs file.
 from enum import Enum
 from typing import Union
 
-# exclude this module from docs
-__all__ = []
-
 
 class Press(Enum):
+    """@private"""
+
     ENTER = "Enter"
     TAB = "Tab"
     SPACE = "Space"

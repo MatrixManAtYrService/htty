@@ -1,0 +1,6 @@
+{% extends "default/module.html.jinja2" %}
+
+{# Override the nav block to remove the submodules section #}
+{% block nav %}
+{{ super() | replace('<h2>Submodules</h2>\n            <ul>\n            </ul>', '') }}
+{% endblock %}

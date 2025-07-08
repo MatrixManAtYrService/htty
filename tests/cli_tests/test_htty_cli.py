@@ -102,6 +102,7 @@ def test_keys_after_subproc_exit() -> None:
         "htty.cli",
         *("-r", "2"),
         *("-c", "10"),
+        "--debug",
         # echo hello will happen immediately and the subprocess will close
         # then we'll attempt to send text anyway
         *("-k", "world"),
@@ -110,10 +111,14 @@ def test_keys_after_subproc_exit() -> None:
     ]
 
     ran = subprocess.run(cmd, capture_output=True, text=True, env=env)
+    # Debug output
+    print(f"Return code: {ran.returncode}")
+    print(f"stdout: {ran.stdout!r}")
+    print(f"stderr: {ran.stderr!r}")
+
     # Remove the separator that gets added at the end
     expected_output = "hello\n\n----\n"
     assert ran.stdout == expected_output
-    print(ran.stderr)
 
 
 @pytest.fixture

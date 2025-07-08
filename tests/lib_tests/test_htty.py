@@ -13,7 +13,7 @@ from time import sleep
 
 import pytest
 
-from htty import HTProcess, Press, SnapshotResult, run, terminal_session
+from htty import HtWrapper, Press, SnapshotResult, run, terminal_session
 
 
 @pytest.fixture
@@ -70,35 +70,35 @@ def test_hello_world_with_scrolling(hello_world_script: str, test_logger: loggin
     proc.send_keys(Press.ENTER)
     assert proc.snapshot().text == ("        \nworld   \n        ")
     proc.send_keys(Press.ENTER)
-    proc.exit()  # Clean up the ht process
+    proc.ht.exit()  # Clean up the ht process
 
 
 @pytest.mark.htty
 def test_hello_world_after_exit(hello_world_script: str, test_logger: logging.Logger) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
-    ht = run(cmd, rows=6, cols=8, logger=test_logger)
-    ht.send_keys(Press.ENTER)
-    ht.send_keys(Press.ENTER)
-    ht.subprocess_controller.wait()
-    assert ht.snapshot().text == ("hello   \n        \nworld   \n        \ngoodbye \n        ")
+    helloworld = run(cmd, rows=6, cols=8, logger=test_logger)
+    helloworld.send_keys(Press.ENTER)
+    helloworld.send_keys(Press.ENTER)
+    helloworld.cmd.wait()
+    assert helloworld.snapshot().text == ("hello   \n        \nworld   \n        \ngoodbye \n        ")
 
-    exit_code = ht.exit()
-    assert ht.subprocess_controller.exit_code == 0
+    exit_code = helloworld.ht.exit()
+    assert helloworld.cmd.exit_code == 0
     assert exit_code == 0
 
 
 @pytest.mark.htty
 def test_outputs(hello_world_script: str, test_logger: logging.Logger) -> None:
     cmd = f"{sys.executable} {hello_world_script}"
-    ht = run(cmd, rows=4, cols=8, logger=test_logger)
-    ht.send_keys(Press.ENTER)  # First input() call
-    ht.send_keys(Press.ENTER)  # Second input() call to let script finish
+    helloworld = run(cmd, rows=4, cols=8, logger=test_logger)
+    helloworld.send_keys(Press.ENTER)  # First input() call
+    helloworld.send_keys(Press.ENTER)  # Second input() call to let script finish
     # Wait for the script to complete naturally
-    ht.subprocess_controller.wait()
+    helloworld.cmd.wait()
 
     # Be more tolerant of how output gets split across events
     # Just check that we got the expected content across all output events
-    all_output_text = "".join(str(event.get("data", {}).get("seq", "")) for event in ht.get_output())
+    all_output_text = "".join(str(event.get("data", {}).get("seq", "")) for event in helloworld.get_output())
 
     # Should contain all the expected text (now that we let it complete)
     assert "hello" in all_output_text, f"Expected 'hello' in output: {all_output_text}"
@@ -106,9 +106,9 @@ def test_outputs(hello_world_script: str, test_logger: logging.Logger) -> None:
     assert "goodbye" in all_output_text, f"Expected 'goodbye' in output: {all_output_text}"
 
     # Should have at least some output events
-    assert len(ht.get_output()) > 0, "Should have at least one output event"
+    assert len(helloworld.get_output()) > 0, "Should have at least one output event"
 
-    ht.exit()  # Clean up the ht process
+    helloworld.ht.exit()  # Clean up the ht process
 
 
 @pytest.mark.htty
@@ -119,7 +119,7 @@ def test_enum_keys_interface(hello_world_script: str) -> None:
     proc.send_keys(Press.ENTER)
 
     assert proc.snapshot().text == ("        \nworld   \n        ")
-    proc.exit()  # Clean up the ht process
+    proc.ht.exit()  # Clean up the ht process
 
 
 @pytest.mark.htty
@@ -144,10 +144,10 @@ def test_html_snapshot_with_colors(colored_hello_world_script: str) -> None:
     assert '<span class="ansi32">world</span>' in snapshot2.html
 
     # Clean up
-    proc.subprocess_controller.terminate()
-    proc.subprocess_controller.wait(timeout=1.0)
-    proc.terminate()
-    proc.wait(timeout=2.0)
+    proc.cmd.terminate()
+    proc.cmd.wait(timeout=1.0)
+    proc.ht.terminate()
+    proc.ht.wait(timeout=2.0)
 
 
 @pytest.mark.htty
@@ -174,7 +174,7 @@ def test_exit_while_subprocess_running(hello_world_script: str) -> None:
     assert "hello" in snapshot.text
 
     # Exit while subprocess is still waiting for input (should force termination)
-    exit_code = proc.exit(timeout=5.0)
+    exit_code = proc.ht.exit(timeout=5.0)
 
     # Should exit with forced termination code
     # Unix convention: process terminated by signal N returns exit code -N
@@ -182,7 +182,7 @@ def test_exit_while_subprocess_running(hello_world_script: str) -> None:
     assert exit_code == -15
 
     # Process should be terminated
-    assert proc.ht_proc.poll() is not None, "ht process should have exited"
+    assert proc.ht.poll() is not None, "ht process should have exited"
 
 
 @pytest.mark.htty
@@ -196,18 +196,18 @@ def test_exit_after_subprocess_finished(hello_world_script: str) -> None:
     proc.send_keys(Press.ENTER)  # Second input()
 
     # Wait for subprocess to finish
-    proc.subprocess_controller.wait(timeout=3.0)
+    proc.cmd.wait(timeout=3.0)
 
     # Take final snapshot
     snapshot = proc.snapshot()
     assert "goodbye" in snapshot.text
 
     # Exit should work cleanly
-    exit_code = proc.exit(timeout=5.0)
+    exit_code = proc.ht.exit(timeout=5.0)
     assert exit_code == 0
 
     # Process should be terminated
-    assert proc.ht_proc.poll() is not None, "ht process should have exited"
+    assert proc.ht.poll() is not None, "ht process should have exited"
 
 
 # CLI Example Tests - These translate CLI examples to Python API usage
@@ -217,7 +217,7 @@ def test_exit_after_subprocess_finished(hello_world_script: str) -> None:
 def test_vim_startup_screen(vim_path: Path) -> None:
     """Test equivalent to: htty --snapshot -- vim | grep "VIM - Vi IMproved" """
 
-    proc: HTProcess = run(str(vim_path), rows=20, cols=50)
+    proc: HtWrapper = run(str(vim_path), rows=20, cols=50)
 
     # Wait for Vim to draw its startup screen
     time.sleep(0.1)  # Small delay to allow screen drawing
@@ -232,7 +232,7 @@ def test_vim_startup_screen(vim_path: Path) -> None:
     # Exit vim
     proc.send_keys(":q!")
     proc.send_keys(Press.ENTER)
-    proc.exit()
+    proc.ht.exit()
 
 
 @pytest.mark.htty
@@ -280,7 +280,7 @@ def test_vim_duplicate_line(vim_path: Path) -> None:
     # Send keys: ":q!,Enter" (quit without saving)
     proc.send_keys(":q!")
     proc.send_keys(Press.ENTER)
-    proc.exit()
+    proc.ht.exit()
 
 
 @pytest.mark.htty
