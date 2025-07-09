@@ -13,6 +13,9 @@ select = [
 
 fixable = ["ALL"]
 
+[lint.per-file-ignores]
+"__init__.py" = ["E501"]
+
 [lint.isort]
 known-first-party = ["htty"]
 force-single-line = false

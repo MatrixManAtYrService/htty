@@ -2,10 +2,10 @@
 
 {# Override the nav block to add project name at top and restructure sections #}
 {% block nav %}
-<h1>htty</h1>   
+<h1>htty-core</h1>
 {% if module.members %}
     <h2>API</h2>
     {{ nav_members(module.members.values()) }}
 {% endif %}
-<h3><a href="./htty-core/htty_core.html">htty-core</a></h3>
+<h3><a href="../htty.html">htty</a></h3>
 {% endblock %}

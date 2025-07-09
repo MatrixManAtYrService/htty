@@ -302,6 +302,41 @@ def test_readme_example(vim_path: Path, test_logger: logging.Logger) -> None:
 
 
 @pytest.mark.htty
+def test_docs_example(test_logger: logging.Logger) -> None:
+    sh = r'PS1="$ " sh -i'  # prompt: $ █
+    # not: sh-5.2$ █
+
+    command = r"printf '\n\n\n\nhello world\n'"
+    with terminal_session(sh, rows=4, cols=6, logger=test_logger) as bash:
+        bash.send_keys([command, Press.ENTER])
+        bash.expect("world")
+        hello = bash.snapshot()
+
+        bash.send_keys(["clear", Press.ENTER])
+        bash.expect_absent("world")
+        bash.expect("\\$")
+        cleared = bash.snapshot()
+
+    assert hello.text == "\n".join(
+        [
+            "      ",  # line wrap after 6 chars
+            "hello ",
+            "world ",
+            "$     ",  # four columns wide
+        ]
+    )
+
+    assert cleared.text == "\n".join(
+        [
+            "$     ",  # cleared
+            "      ",
+            "      ",
+            "      ",
+        ]
+    )
+
+
+@pytest.mark.htty
 def test_expect_regex(colored_hello_world_script: str, test_logger: logging.Logger) -> None:
     """Test that expect and expect_absent support regex patterns."""
     cmd = f"{sys.executable} {colored_hello_world_script}"
@@ -319,7 +354,10 @@ def test_expect_timeout(colored_hello_world_script: str, test_logger: logging.Lo
     """Test that expect times out if pattern is not found."""
     cmd = f"{sys.executable} {colored_hello_world_script}"
     with (
-        pytest.raises(TimeoutError, match=r"Pattern 'nonexistent' not found within \d+\.\d+ seconds"),
+        pytest.raises(
+            TimeoutError,
+            match=r"Pattern 'nonexistent' not found within \d+\.\d+ seconds",
+        ),
         terminal_session(cmd, rows=4, cols=8, logger=test_logger) as proc,
     ):
         proc.expect("nonexistent", timeout=1.0)  # Pattern that will never appear
