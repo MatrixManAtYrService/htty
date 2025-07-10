@@ -7,7 +7,7 @@ It can be configured to provide snapshots when patterns appear.
 ### Example
 
 The [sl](https://linuxcommandlibrary.com/man/sl) command provides an ascii animated train for your terminal.
-we can use `htty` to set the headless terminal size and capture snapshots of it.
+We can use `htty` to set the headless terminal size and capture snapshots of it.
 
 ![animated ascii-art train](example.svg)
 
