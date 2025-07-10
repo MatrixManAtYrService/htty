@@ -4,52 +4,18 @@
 `htty` runs commands with a headless terminal attached.
 It can be configured to wait for patterns in the headless terminal and then provide snapshots.
 
+### Example
 
-This train is brought to you by the [sl](https://linuxcommandlibrary.com/man/sl) command.
+The [sl](https://linuxcommandlibrary.com/man/sl) command provides an ascii animated train for your terminal.
 
-![animated ascii-art train](animated.svg)
+![animated ascii-art train](example.svg)
 
-Below, ht takes one snapshot when a `Y` is seen, and another when the last `I` has gone away.
-
-```
-$ htty -r 12 -c 50 --expect Y --snapshot --expect-absent I --snapshot -- sl
-                (   )
-               ====        ________
-           _D _|  |_______/        \__I_I_____===_
-            |(_)---  |   H\________/ |   |
-            /     |  |   H  |  |     |   |
-           |      |  |   H  |__-------------------
-           | ________|___H__/__|_____/[][]~\______
-           |/ |   |-----------I_____I [][] []  D
-         __/ =| o |=-O=====O=====O=====O \ ____Y__
-          |/-=|___|=    ||    ||    ||    |_____/~
-           \_/      \__/  \__/  \__/  \__/      \_
-
-----
-
-       ___________
-__===__|_________|
-      =|___ ___|      _________________
-       ||_| |_||     _|                \_____A
--------| [___] |   =|                        |
-_______|       |   -|                        |
-]  D   |=======|____|________________________|_
-___Y___________|__|__________________________|_
-____/~\___/          |_D__D__D_|  |_D__D__D_|
-    \_/               \_/   \_/    \_/   \_/
-
-----
-```
-You can run the `htty` command in a shell, or you can `import htty` in python.
-They provide the same functionality.
+Here we ran `sl` with `htty`.
+We'll took one snapshot when a `Y` is seen, and another when the last `I` has gone away.
 
 ### Python API
 
 The python code below walks `vim` through a short flow, capturing snapshots along the way.
-
-The `expect` commands are useful to prevent race conditions.
-Without them we're likely to take a snapshot before vim has fully arrived at the expected state.
-
 
 ```python3
 from htty import Press, terminal_session
@@ -71,6 +37,9 @@ assert improved_line == "~               VIM - Vi IMproved                 "
 
 assert hello.text.split("\n")[0].strip() == "hello world"
 ```
+
+The `expect` commands are useful to prevent race conditions.
+Without them we're likely to take a snapshot before vim has fully arrived at the expected state.
 
 ### Command Line Interface
 
