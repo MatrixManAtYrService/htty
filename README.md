@@ -7,7 +7,7 @@ It can be configured to provide snapshots when patterns appear.
 ### Example
 
 By default, the [sl](https://linuxcommandlibrary.com/man/sl) command provides your terminal with an animated ascii train.
-Let's run it with `htty` to instead run it with a headless terminal.
+Let's give it a headless terminal instead by using `htty`.
 
 ![animated ascii-art train](example.svg)
 
