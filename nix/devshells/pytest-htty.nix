@@ -11,7 +11,7 @@ lib.makePytestShell {
   inherit pkgs system perSystem;
 
   # Use the complete htty environment
-  packages = [ perSystem.self.htty ];
+  packages = [ perSystem.self.htty pkgs.sl ];
 
   extraBuildInputs = [ testVim ];
   extraShellHook = ''

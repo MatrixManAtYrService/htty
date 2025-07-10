@@ -1,8 +1,29 @@
 """
 htty - a wrapper around [ht](https://github.com/andyk/ht)
 
-Run a command in a headless terminal of indicated size.
-Send keystrokes and take snapshots.
+Some terminal applications don't make it easy to capture their output in a human-readable way.
+Here's vim's startup screen:
+
+```
+~                       VIM - Vi IMproved
+~                       version 9.1.1336
+~                   by Bram Moolenaar et al.
+~          Vim is open source and freely distributable
+~
+~                 Help poor children in Uganda!
+```
+
+If you capture vim's ouput directly, you won't get the nicely formatted text you see above.
+Instead, you'll get raw ANSI escape sequences.
+
+```
+Vi IMproved[6;37Hversion 9.0.2136[7;33Hby Bram Moolenaar et al.[8;24HVim is open source and freely distributable[10;32HHelp poor children in Uganda!
+```
+
+htty connects vim (or any other process) to a [pseudoterminal interface](https://man7.org/linux/man-pages/man7/pty.7.html)) which directs output to an ANSI interpreter.
+Most ANSI interpreters are bundled into terminals that put characters on your screen for viewing, but this one is headless, so instead the text is stored internally for later reference.
+
+This is useful if you want to work with program output as a human-readable string without having a human in the loop.
 
 # Library Usage
 
@@ -53,55 +74,49 @@ $ htty --help
 # DOCS_OUTPUT: htty --help
 ```
 
-The comand below asks for two snapshots.
-They're printed to stdout with a '----' to indicate the end of each snapshot.
+The `sl` command animates an ascii-art train engine driving from right to left across your terminal.
+Near the middle of the engine are some `I`'s an further back is a `Y`.
+`htty` can use the appearance and dissapearance of these characters to trigger snapshots of the train.
+
+The command below wraps `sl`, and captures two snapshots (triggered by Y appearing and I dissapering).
+ ints them to stdout with a '----' to indicate the end of each snapshot.
 
 ```
-$ htty -r 20 -c 50 --expect Q --snapshot --snapshot -- aafire
+$ htty -r 15 -c 50 --expect Y --snapshot --expect-absent I --snapshot -- sl
+
+                    (@@@)
+                 ====        ________
+             _D _|  |_______/        \\__I_I_____==
+              |(_)---  |   H\\________/ |   |
+              /     |  |   H  |  |     |   |
+             |      |  |   H  |__-----------------
+             | ________|___H__/__|_____/[][]~\\____
+             |/ |   |-----------I_____I [][] []  D
+           __/ =| o |=-~~\\  /~~\\  /~~\\  /~~\\ ____Y
+            |/-=|___|=   O=====O=====O=====O|_____
+             \\_/      \\__/  \\__/  \\__/  \\__/
 
 
-                       :|i=.
-                      .|nZXI=
-                       .=vXZXI:
-                         -I#:WWn=
-                         -nW;==Q#|
-                        .IW===;QWS-.
-                        =XQ;QW#Z#X|.
-                 :||:  :S#W#Xi+IX#S|.
-                iW==WXIn:Q;WSi++IXS|.. .
-..             -X;+|=;::Q=|++==QZZn+.            .
-WQI            .IW==Q#XZQ+|+|i::||QZSSv:         |
-==Z        :nZXiS;||+Q:Q;=QZ#|vnvi=QQ;=#n+--.    -
-IWS  .=-  -#QQ::;|lvll::|=:Z;|Iv:|QW;==;W#I=.
--:----:-.-S;=::W=iii:vooI|+=|vvi=n:iW===;WS++-   |
-#. W,;iSWQ#Z#;+||i||v=X=ni|=|vvv:=QX=||||QWZn=.  X
-==.n;+vW==:-|Z+||ill+vXmmuQ=ivvn=l=+|::|+==;Z=--.
--+|SnS~:||t#IS:(=:vn#]wmWf;Q)nv==(:|ilvii=++ZS:S .
-) )  ==t`W`WW WW^tW--'?-`~-`Wt''---`'^-^`^`Zt+t :
+
 ----
 
 
+      ___________
+_===__|_________|
+     =|___ ___|      _________________
+      ||_| |_||     _|                \\_____A
+------| [___] |   =|                        |
+______|       |   -|                        |
+  D   |=======|____|________________________|_
+__Y___________|__|__________________________|_
+___/~\\___/          |_D__D__D_|  |_D__D__D_|
+   \\_/               \\_/   \\_/    \\_/   \\_/
 
 
 
-                      -+++-
-                     -I#:W#S+-
-                     -|X:;==QWSI=.
-                   -=v#=+|ii|+;WX=.
-                -+vnZW=|lll::|+Q:v=.
-              =nZ##Z:Q=|i::ll:|:ZSnI-
- .      :-    SWQWWW;+|:lIIvl:+WXZ:#i:.
-       -I+    SQ=|=;;+:Ivv:l:i=##QQ#i::.
-       =nn|- .nQ|ii+QQ==+====Q:Q==Q#IvXS|.
-      .:IvnSSnZQ|i::||||||=QZZW+||===|QW#S:.
-    --:i|-IQ|+++ilv::vvn:|=||=;|lI||i+:ZZni-
--  =yvIZn=n=::|iIvvl:n==l=+:v>=|lv+^+WQ:::XI-    :
-=  i:QQQ=Q#QW+vnnn:W<d#X(QZvI+:v==-.+vQWnSX#X++-.-
-..-|v:==+=:= (nnvnvn=mmm=+Q][ =nX[-=n#=Qvv:WQiZv.=
-. )  .= WW tWWW ^^^-t--^`-^t-+W``W-W^`t'^ WWtt=::.
 ----
 ```
-Without a `--expect`, it's likely that your first snapshot will be empty because it happens before the command can get around to producing any output.
+Warning: if you don't include an `--expect`, it's likely that your first snapshot will be empty because it happens before the command can get around to producing any output.
 """
 
 import htty.keys as keys

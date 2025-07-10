@@ -1,33 +1,19 @@
 # htty - A fork of [ht](https://github.com/andyk/ht)
 
-![CI](https://github.com/MatrixManAtYrService/htty/workflows/CI/badge.svg)
+This train is brought to you by the [sl](https://linuxcommandlibrary.com/man/sl) command.
+![animated ascii-art train](animated.svg)
 
-Some terminal applications don't make it easy to capture their output in a human-readable way.
-Here's vim's startup screen:
-
-```
-~                       VIM - Vi IMproved
-~                       version 9.1.1336
-~                   by Bram Moolenaar et al.
-~          Vim is open source and freely distributable
-~
-~                 Help poor children in Uganda!
-```
-
-If you capture vim's ouput directly, you won't get the nicely formatted text you see above.
-Instead, you'll get raw ANSI escape sequences.
+`htty` runs commands like `sl` with a headless terminal attached.
+You can ask it to print snapshots based on the headless terminal's contents.
 
 ```
-Vi IMproved[6;37Hversion 9.0.2136[7;33Hby Bram Moolenaar et al.[8;24HVim is open source and freely distributable[10;32HHelp poor children in Uganda!
+htty -r 15 -c 50 --expect Y --snapshot --expect-absent I --snapshot -- sl
 ```
 
-htty connects vim (or any other process) to a [pseudoterminal interface](https://man7.org/linux/man-pages/man7/pty.7.html)) which directs output to an ANSI interpreter.
-Most ANSI interpreters are bundled into terminals that put characters on your screen for viewing, but this one is headless, so instead the text is stored internally for later reference.
+![two snapshots of the train](snapshots.svg)
 
-This is useful if you want to work with program output as a human-readable string without having a human in the loop.
-
-
-
+You can run the `htty` command in a shell, or you can `import htty` in python.
+They provide the same functionality.
 
 ### Python API
 
@@ -67,8 +53,8 @@ The snapshots are printed to stdout, and are terminated by a '----' .
 ```bash
 $ htty --rows 20 --cols 50 \
   --expect 'version 9.1.1336' --snapshot \
-  --keys 'i,hello world,Escape' --expect-absent INSERT \
-  --snapshot \
+  --keys 'i,hello world,Escape' \
+  --expect-absent INSERT --snapshot \
   -- vim
 ```
 ```
@@ -120,4 +106,8 @@ hello world
 This project uses a two-package distribution:
 
 - **[htty](htty/README.md)** - Install this. It provides `htty` both as a command-line tool and as a python library.  It's pure python, packaged as a source distribution.
-- **[htty-core](htty-core/README.md)** - Contains an `ht` binary (modified in this fork) and a minimal python interface for interacting with it.  It's packaged as an architecture-specific wheel.  `htty` depends on `htty-core`.
+- **[htty-core](htty-core/README.md)** - Contains the `ht` binary (written in rust, modified by this fork, built by [maturin](https://github.com/PyO3/maturin)) and a minimal python interface for running it.  It's packaged as an architecture-specific wheel.  `htty` depends on `htty-core`.
+
+## Docs
+
+For more information, see [the docs](./docs/htty.html).
