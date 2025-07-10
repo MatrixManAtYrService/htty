@@ -11,12 +11,9 @@ Let's give it a headless terminal instead by using `htty`.
 
 ![animated ascii-art train](example.svg)
 
-The command was:
-```
-htty -r 12 -c 50 --expect Y --snapshot --expect-absent I --snapshot -- sl
-```
-
-This takes a snapshot when the `Y` is seen, and another when the last `I` leaves view.
+First we saw what `sl` looks like when it's directly connected to the viewer's terminal.
+Then we used `htty` to run it with a headless terminal attached.
+`htty` was configured to only show us specific snapshots from that terminal.
 
 ### Python API
 
