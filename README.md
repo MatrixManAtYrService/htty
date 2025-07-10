@@ -1,17 +1,45 @@
 # htty - A fork of [ht](https://github.com/andyk/ht)
 
+
+`htty` runs commands with a headless terminal attached.
+It can be configured to wait for patterns in the headless terminal and then provide snapshots.
+
+
 This train is brought to you by the [sl](https://linuxcommandlibrary.com/man/sl) command.
+
 ![animated ascii-art train](animated.svg)
 
-`htty` runs commands like `sl` with a headless terminal attached.
-You can ask it to print snapshots based on the headless terminal's contents.
+Below, ht takes one snapshot when a `Y` is seen, and another when the last `I` has gone away.
 
 ```
-htty -r 15 -c 50 --expect Y --snapshot --expect-absent I --snapshot -- sl
+$ htty -r 12 -c 50 --expect Y --snapshot --expect-absent I --snapshot -- sl
+                (   )
+               ====        ________
+           _D _|  |_______/        \__I_I_____===_
+            |(_)---  |   H\________/ |   |
+            /     |  |   H  |  |     |   |
+           |      |  |   H  |__-------------------
+           | ________|___H__/__|_____/[][]~\______
+           |/ |   |-----------I_____I [][] []  D
+         __/ =| o |=-O=====O=====O=====O \ ____Y__
+          |/-=|___|=    ||    ||    ||    |_____/~
+           \_/      \__/  \__/  \__/  \__/      \_
+
+----
+
+       ___________
+__===__|_________|
+      =|___ ___|      _________________
+       ||_| |_||     _|                \_____A
+-------| [___] |   =|                        |
+_______|       |   -|                        |
+]  D   |=======|____|________________________|_
+___Y___________|__|__________________________|_
+____/~\___/          |_D__D__D_|  |_D__D__D_|
+    \_/               \_/   \_/    \_/   \_/
+
+----
 ```
-
-![two snapshots of the train](snapshots.svg)
-
 You can run the `htty` command in a shell, or you can `import htty` in python.
 They provide the same functionality.
 

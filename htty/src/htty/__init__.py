@@ -27,6 +27,8 @@ This is useful if you want to work with program output as a human-readable strin
 
 # Library Usage
 
+The `terminal_session` context manager yields a `HtWrapper` object which has methods for communicating with the underlying `ht` process.
+
 ```python
 from htty import Press, terminal_session
 
