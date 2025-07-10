@@ -2,7 +2,7 @@
 
 
 `htty` runs commands with a headless terminal attached.
-It can be configured to wait for patterns in the headless terminal and then provide snapshots.
+It can be configured to provide snapshots when patterns appear.
 
 ### Example
 
