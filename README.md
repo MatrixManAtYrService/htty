@@ -6,8 +6,8 @@ It can be configured to provide snapshots when patterns appear.
 
 ### Example
 
-The [sl](https://linuxcommandlibrary.com/man/sl) command provides an ascii animated train for your terminal.
-The session shown below uses `htty` to capture teminal snapshots.
+By default, the [sl](https://linuxcommandlibrary.com/man/sl) command provides your terminal with an animated ascii train.
+Let's run it with `htty` to instead run it with a headless terminal.
 
 ![animated ascii-art train](example.svg)
 
