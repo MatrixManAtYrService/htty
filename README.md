@@ -7,7 +7,7 @@ It can be configured to provide snapshots when patterns appear.
 ### Example
 
 The [sl](https://linuxcommandlibrary.com/man/sl) command provides an ascii animated train for your terminal.
-The session shown below uses `htty` to script the capture of teminal snapshots.
+The session shown below uses `htty` to capture teminal snapshots.
 
 ![animated ascii-art train](example.svg)
 
