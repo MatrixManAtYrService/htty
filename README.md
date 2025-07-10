@@ -112,4 +112,4 @@ This project uses a two-package distribution:
 
 ## Docs
 
-For more information, see [the docs](./docs/htty.html).
+For more information, see [the docs](https://matrixmanatyrservice.github.io/htty/htty.html).
