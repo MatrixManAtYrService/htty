@@ -6,11 +6,13 @@ import re
 import subprocess
 import threading
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager, suppress
-from typing import Any, Optional, Union
+from typing import Annotated, Any, Optional, TypeAlias, Union
 
 from htty_core import HtArgs, HtEvent, run as htty_core_run
 
+from .constants import DEFAULT_TERMINAL_COLS, DEFAULT_TERMINAL_ROWS
 from .html_utils import simple_ansi_to_html
 from .keys import KeyInput, keys_to_strings
 from .proc import CmdProcess, HtProcess, ProcessController
@@ -47,47 +49,26 @@ SUBPROCESS_EXIT_DETECTION_DELAY = 0.2
 MAX_SNAPSHOT_RETRIES = 10
 DEFAULT_EXPECT_TIMEOUT = 5.0
 
+Command: TypeAlias = Annotated[Union[str, list[str]], "use `ht` to run this command"]
+Rows: TypeAlias = Annotated[
+    Optional[int],
+    f"number of rows for the terminal (None for default: {DEFAULT_TERMINAL_ROWS})",
+]
+Cols: TypeAlias = Annotated[
+    Optional[int],
+    f"number of columns for the terminal (None for default: {DEFAULT_TERMINAL_COLS})",
+]
+NoExit: TypeAlias = Annotated[
+    bool,
+    (
+        "whether to keep ht running even after the underlying command exits\n"
+        "(requires the caller to send an explicit 'exit' command,\n "
+        "but allows them to take snapshots after exit)"
+    ),
+]
+Logger: TypeAlias = Annotated[Optional[logging.Logger], "caller-injected logger instance"]
 
-@contextmanager
-def terminal_session(
-    command: Union[str, list[str]],
-    rows: Optional[int] = None,
-    cols: Optional[int] = None,
-    no_exit: bool = True,
-    logger: Optional[logging.Logger] = None,
-    extra_subscribes: Optional[list[str]] = None,
-):
-    """
-    Context manager for HtWrapper that ensures proper cleanup.
-    """
-    proc = run(
-        command,
-        rows=rows,
-        cols=cols,
-        no_exit=no_exit,
-        logger=logger,
-        extra_subscribes=extra_subscribes,
-    )
-    try:
-        yield proc
-    finally:
-        try:
-            if proc.cmd.pid:
-                proc.cmd.terminate()
-                proc.cmd.wait(timeout=DEFAULT_SUBPROCESS_WAIT_TIMEOUT)
-        except Exception:
-            try:
-                if proc.cmd.pid:
-                    proc.cmd.kill()
-            except Exception:
-                pass
-
-        try:
-            proc.ht.terminate()
-            proc.ht.wait(timeout=DEFAULT_SUBPROCESS_WAIT_TIMEOUT)
-        except Exception:
-            with suppress(Exception):
-                proc.ht.kill()
+ExtraSubscribes: TypeAlias = Annotated[Optional[list[HtEvent]], "additional event types to subscribe to"]
 
 
 class SnapshotResult:
@@ -539,18 +520,111 @@ class HtWrapper:
                 # Don't raise here - the process might have exited after the pattern disappeared
 
 
+@contextmanager
+def terminal_session(
+    command: Command,
+    rows: Rows = None,
+    cols: Cols = None,
+    no_exit: NoExit = True,
+    logger: Logger = None,
+    extra_subscribes: ExtraSubscribes = None,
+) -> Iterator[HtWrapper]:
+    """
+    The terminal_session context manager is a wrapper around `run` which ensures that the underlying process
+    gets cleaned up:
+
+    ```python
+    with terminal_session("some command") as proc:
+        # interact with the running command here
+        assert proc.exit_code is not None
+        s = proc.snapshot()
+
+    # htty terminates your command on context exit
+    assert proc.exit_code is None
+    assert "hello world" in proc.snapshot()
+    ```
+
+    Its usage is otherwise the same as `run`.
+    It also returns a
+
+    """
+
+    proc = run(
+        command,
+        rows=rows,
+        cols=cols,
+        no_exit=no_exit,
+        logger=logger,
+        extra_subscribes=extra_subscribes,
+    )
+    try:
+        yield proc
+    finally:
+        try:
+            if proc.cmd.pid:
+                proc.cmd.terminate()
+                proc.cmd.wait(timeout=DEFAULT_SUBPROCESS_WAIT_TIMEOUT)
+        except Exception:
+            try:
+                if proc.cmd.pid:
+                    proc.cmd.kill()
+            except Exception:
+                pass
+
+        try:
+            proc.ht.terminate()
+            proc.ht.wait(timeout=DEFAULT_SUBPROCESS_WAIT_TIMEOUT)
+        except Exception:
+            with suppress(Exception):
+                proc.ht.kill()
+
+
 def run(
-    command: Union[str, list[str]],
-    rows: Optional[int] = None,
-    cols: Optional[int] = None,
-    no_exit: bool = True,
-    logger: Optional[logging.Logger] = None,
-    extra_subscribes: Optional[list[str]] = None,
+    command: Command,
+    rows: Rows = None,
+    cols: Cols = None,
+    no_exit: NoExit = True,
+    logger: Logger = None,
+    extra_subscribes: ExtraSubscribes = None,
 ) -> HtWrapper:
     """
-    Run a command using the 'ht' tool and return a HtWrapper object.
+    As a user of the htty python library, your code will run in the python process at the root of this
+    process tree:
 
-    This version uses --wait-for-output by default to avoid race conditions.
+        python '{/path/to/your/code.py}'
+        └── ht
+            └── sh -c '{modified command}'
+
+    So if you're using htty to wrap vim, the process tree is:
+
+    ```
+    python
+    └── ht
+        └── sh
+            └── vim
+    ```
+
+    For reasons that are documented in [htty-core](../htty-core/htty_core.html#run), the command that ht
+    runs is not:
+
+        sh -c '{command}'
+
+    Instead it's something like this:
+
+        sh -c '{command} ; exit_code=$? ; /path/to/ht wait-exit /path/to/tmp/ht_fifo_5432 ; exit $exit_code'
+
+    This function invokes `ht` as a subprocess such that you end up with a process tree like the one shown
+    above. It returns an `HtWrapper` object which can be used to interact with ht and its child process.
+
+    It's up to you to clean up this process when you're done:
+
+    ```python
+    proc = run("some command")
+    # do stuff
+    proc.exit()
+    ````
+    If you'd rather not risk having a bunch of `ht` processes lying around and wasting CPU cycles,
+    consider using the `terminal_session` instead.
     """
     # Use provided logger or fall back to default
     process_logger = logger or default_logger

@@ -20,10 +20,13 @@ Instead, you'll get raw ANSI escape sequences.
 Vi IMproved[6;37Hversion 9.0.2136[7;33Hby Bram Moolenaar et al.[8;24HVim is open source and freely distributable[10;32HHelp poor children in Uganda!
 ```
 
-htty connects vim (or any other process) to a [pseudoterminal interface](https://man7.org/linux/man-pages/man7/pty.7.html)) which directs output to an ANSI interpreter.
-Most ANSI interpreters are bundled into terminals that put characters on your screen for viewing, but this one is headless, so instead the text is stored internally for later reference.
+htty makes it possible to get a human-friendly string representing the contents of a terminal, without having an actual graphical terminal emulator in the loop.
 
-This is useful if you want to work with program output as a human-readable string without having a human in the loop.
+To do this, it connects processes (like vim) to a [pseudoterminal interface](https://man7.org/linux/man-pages/man7/pty.7.html) which directs output to an ANSI interpreter.
+Most ANSI interpreters are involved with putting characters on a screen for humans to view directly, but this one is headless, so the text is stored internally for later reference.
+
+htty lets you control the underlying process and take snapshots of the headless terminal's contents at times when you expect it to be interesting.
+This can be handy for testing, like when you want to assert that the user's terminal looks a certain way.
 
 # Library Usage
 
@@ -66,10 +69,17 @@ It's a good idea to `expect` something before you take a snapshot, otherwise the
 
 # Command Line Usage
 
-Unlike the library, the `htty` command accepts all of its instructions before it starts.
-It will run them all, terminate the child process, and exit.
+Unlike the `htty` python library, the `htty` command accepts all of its instructions before it starts.
+It will
 
-If you're looking for something more interactive, consider running `ht` instead of `htty`.
+    1. run them all, printing snapshots along the way
+    2. terminate the child process
+    3. exit
+
+If you're looking for something that doesn't clean the process up afterwards, consider one of these:
+ - run `ht` instead of `htty` in a shell ([usage](https://github.com/andyk/ht?tab=readme-ov-file#usage))
+ - use `htty` as a python library
+ - other terminal emulator libraries such as [pyte](https://github.com/selectel/pyte)
 
 ```
 $ htty --help

@@ -10,6 +10,8 @@ import sys
 import time
 from typing import Optional
 
+from htty_core import HtEvent
+
 from .ht import HtWrapper, run
 from .keys import KeyInput
 
@@ -149,7 +151,7 @@ processed in order.
     try:
         # Set up debug logger if requested
         debug_logger: Optional[logging.Logger] = None
-        extra_subscribes: Optional[list[str]] = None
+        extra_subscribes: Optional[list[HtEvent]] = None
 
         if args.debug:
             # Create a debug logger that outputs to stderr
@@ -165,7 +167,7 @@ processed in order.
                 debug_logger.addHandler(handler)
 
             # Subscribe to debug events
-            extra_subscribes = ["debug"]
+            extra_subscribes = [HtEvent.DEBUG]
 
         # Start the ht process
         proc: HtWrapper = run(

@@ -1,13 +1,13 @@
 # htty - A fork of [ht](https://github.com/andyk/ht)
 
 
-`htty` runs commands with a headless terminal attached.
-It can be configured to provide snapshots when patterns appear.
+`htty` controls processes that are attached to a headless terminal.
+It has both a command line interface, and a Python API.
 
 ### Example
 
-By default, the [sl](https://linuxcommandlibrary.com/man/sl) command provides your terminal with an animated ascii train.
-Let's give it a headless terminal instead by using `htty`.
+ - [sl](https://linuxcommandlibrary.com/man/sl) animates an ascii train
+ - `htty` generates snapshots of the train  at specific moments
 
 ![animated ascii-art train](example.svg)
 

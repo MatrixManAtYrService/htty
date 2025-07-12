@@ -233,6 +233,91 @@ let
     verboseCommand = "cd htty-core && cargo clippy --all-targets --all-features --verbose";
   };
 
+  # Function to create generateConstantsCheck that accesses the flake's constants
+  makeGenerateConstantsCheck = { flake, files ? [ ] }:
+    let
+      lib = flake.lib pkgs;
+      inherit (lib) constants;
+      filesStr = builtins.concatStringsSep " " files;
+    in
+    makeCheck {
+      name = "generate-constants";
+      description = "Generate constants files using Cog from nix/lib/constants.nix";
+      dependencies = with pkgs; [ python3 python3Packages.cogapp ];
+      environment = {
+        # Export constants as environment variables for Cog
+        HTTY_DEFAULT_COLS = toString constants.terminal.default_cols;
+        HTTY_DEFAULT_ROWS = toString constants.terminal.default_rows;
+      };
+      command = ''
+        echo "Generating constants files using Cog from nix/lib/constants.nix..."
+
+        # Check if we can write to the current directory
+        if [ ! -w "." ]; then
+          echo "❌ Cannot generate constants (read-only environment)"
+          echo "💡 Run this check in a writable directory"
+          exit 1
+        fi
+
+        # Files to process
+        files="${filesStr}"
+        files_processed=0
+
+        for file in $files; do
+          if [ -f "$file" ]; then
+            echo "Processing $file..."
+            cog -r "$file"
+            files_processed=$((files_processed + 1))
+          else
+            echo "⚠️  File not found: $file"
+          fi
+        done
+
+        if [ $files_processed -eq 0 ]; then
+          echo "❌ No files were processed successfully"
+          exit 1
+        else
+          echo "✅ Processed $files_processed file(s) successfully"
+        fi
+      '';
+      verboseCommand = ''
+        printf '%s\n' "🔧 Generating constants files using Cog from nix/lib/constants.nix"
+        printf '%s\n' "🔧 Working in current directory: $(pwd)"
+        printf '%s\n' "🔧 Environment variables:"
+        printf '%s\n' "   HTTY_DEFAULT_COLS=$HTTY_DEFAULT_COLS"
+        printf '%s\n' "   HTTY_DEFAULT_ROWS=$HTTY_DEFAULT_ROWS"
+        printf '%s\n' "🔧 Files to process: ${filesStr}"
+
+        # Check if we can write to the current directory
+        if [ ! -w "." ]; then
+          echo "❌ Cannot generate constants (read-only environment)"
+          echo "💡 Run this check in a writable directory"
+          exit 1
+        fi
+
+        # Files to process
+        files="${filesStr}"
+        files_processed=0
+
+        for file in $files; do
+          if [ -f "$file" ]; then
+            printf '%s\n' "🔧 Processing $file..."
+            cog -r "$file"
+            files_processed=$((files_processed + 1))
+          else
+            printf '%s\n' "🔧 File not found: $file"
+          fi
+        done
+
+        if [ $files_processed -eq 0 ]; then
+          echo "❌ No files were processed successfully"
+          exit 1
+        else
+          echo "✅ Processed $files_processed file(s) successfully"
+        fi
+      '';
+    };
+
   # Function to create fawltydeps check with specific Python environment
   makeFawltydepsCheck = { pythonEnv, ignoreUndeclared ? [ ], ignoreUnused ? [ ] }:
     let
@@ -266,6 +351,6 @@ let
 
 in
 {
-  inherit makeCheck generateAnalysisScript createAnalysisPackage makeFawltydepsCheck;
+  inherit makeCheck generateAnalysisScript createAnalysisPackage makeFawltydepsCheck makeGenerateConstantsCheck;
   inherit deadnixCheck nixpkgsFmtCheck statixCheck ruffCheckCheck ruffFormatCheck pyrightCheck trimWhitespaceCheck rustClippyCheck;
 }
