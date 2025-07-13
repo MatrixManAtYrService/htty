@@ -1,6 +1,11 @@
 [package]
 name = "htty_core"
-version = "0.3.0"
+# [[[cog
+# import os
+# cog.out(f'version = "{os.environ["HTTY_VERSION"]}"')
+# ]]]
+version = "0.2.1-2025-July-13-23-55"
+# [[[end]]]
 edition = "2021"
 rust-version = "1.74"
 license = "MIT"

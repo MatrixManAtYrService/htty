@@ -233,6 +233,100 @@ let
     verboseCommand = "cd htty-core && cargo clippy --all-targets --all-features --verbose";
   };
 
+  # Function to create generateVersionCheck that accesses the flake's version info
+  makeGenerateVersionCheck = { flake, files ? [ ] }:
+    let
+      lib = flake.lib pkgs;
+      inherit (lib) version;
+      filesStr = builtins.concatStringsSep " " files;
+    in
+    makeCheck {
+      name = "generate-version";
+      description = "Generate version files using Cog from nix/lib/version.nix";
+      dependencies = with pkgs; [ python3 python3Packages.cogapp git ];
+      environment = {
+        # Export version information as environment variables for Cog
+        HTTY_VERSION_MAJOR = toString version.major;
+        HTTY_VERSION_MINOR = toString version.minor;
+        HTTY_VERSION_PATCH = toString version.patch;
+        HTTY_VERSION = version.version;
+        HTTY_VERSION_WITH_GIT = version.versionWithGit;
+        HTTY_GIT_SHA = version.gitSha;
+
+        # Version info strings for --version flags
+        HTTY_VERSION_INFO_HTTY = version.versionInfo.htty;
+        HTTY_VERSION_INFO_HTTY_CORE = version.versionInfo.htty_core;
+        HTTY_VERSION_INFO_HT = version.versionInfo.ht;
+      };
+      command = ''
+        echo "Generating version files using Cog from nix/lib/version.nix..."
+
+        # Check if we can write to the current directory
+        if [ ! -w "." ]; then
+          echo "❌ Cannot generate version files (read-only environment)"
+          echo "💡 Run this check in a writable directory"
+          exit 1
+        fi
+
+        # Files to process
+        files="${filesStr}"
+        files_processed=0
+
+        for file in $files; do
+          if [ -f "$file" ]; then
+            echo "Processing $file..."
+            cog -r "$file"
+            files_processed=$((files_processed + 1))
+          else
+            echo "⚠️  File not found: $file"
+          fi
+        done
+
+        if [ $files_processed -eq 0 ]; then
+          echo "❌ No files were processed successfully"
+          exit 1
+        else
+          echo "✅ Processed $files_processed file(s) successfully"
+        fi
+      '';
+      verboseCommand = ''
+        printf '%s\n' "🔧 Generating version files using Cog from nix/lib/version.nix"
+        printf '%s\n' "🔧 Working in current directory: $(pwd)"
+        printf '%s\n' "🔧 Version information:"
+        printf '%s\n' "   HTTY_VERSION=$HTTY_VERSION"
+        printf '%s\n' "   HTTY_GIT_SHA=$HTTY_GIT_SHA"
+        printf '%s\n' "🔧 Files to process: ${filesStr}"
+
+        # Check if we can write to the current directory
+        if [ ! -w "." ]; then
+          echo "❌ Cannot generate version files (read-only environment)"
+          echo "💡 Run this check in a writable directory"
+          exit 1
+        fi
+
+        # Files to process
+        files="${filesStr}"
+        files_processed=0
+
+        for file in $files; do
+          if [ -f "$file" ]; then
+            printf '%s\n' "🔧 Processing $file..."
+            cog -r "$file"
+            files_processed=$((files_processed + 1))
+          else
+            printf '%s\n' "🔧 File not found: $file"
+          fi
+        done
+
+        if [ $files_processed -eq 0 ]; then
+          echo "❌ No files were processed successfully"
+          exit 1
+        else
+          echo "✅ Processed $files_processed file(s) successfully"
+        fi
+      '';
+    };
+
   # Function to create generateConstantsCheck that accesses the flake's constants
   makeGenerateConstantsCheck = { flake, files ? [ ] }:
     let
@@ -379,6 +473,6 @@ let
 
 in
 {
-  inherit makeCheck generateAnalysisScript createAnalysisPackage makeFawltydepsCheck makeGenerateConstantsCheck;
+  inherit makeCheck generateAnalysisScript createAnalysisPackage makeFawltydepsCheck makeGenerateConstantsCheck makeGenerateVersionCheck;
   inherit deadnixCheck nixpkgsFmtCheck statixCheck ruffCheckCheck ruffFormatCheck pyrightCheck trimWhitespaceCheck rustClippyCheck;
 }

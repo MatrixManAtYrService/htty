@@ -1,6 +1,11 @@
 [project]
 name = "htty_core"
-version = "0.3.0"
+# [[[cog
+# import os
+# cog.out(f'version = "{os.environ["HTTY_VERSION"]}"')
+# ]]]
+version = "0.2.1-2025-July-13-23-55"
+# [[[end]]]
 description = "Headless Terminal - Rust binary for terminal automation"
 readme = "README.md"
 authors = [

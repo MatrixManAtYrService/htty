@@ -141,4 +141,11 @@ from htty.ht import (
 )
 from htty.keys import Press
 
-__all__ = ["terminal_session", "run", "HtWrapper", "ProcessController", "SnapshotResult", "Press", "keys"]
+# [[[cog
+# import os
+# cog.out(f'__version__ = "{os.environ["HTTY_VERSION"]}"')
+# ]]]
+__version__ = "0.2.1-2025-July-13-23-55"
+# [[[end]]]
+
+__all__ = ["terminal_session", "run", "HtWrapper", "ProcessController", "SnapshotResult", "Press", "keys", "__version__"]

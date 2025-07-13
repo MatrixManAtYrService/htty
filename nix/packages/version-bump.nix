@@ -1,0 +1,175 @@
+# Version bumping script for htty project
+{ pkgs, flake, ... }:
+
+let
+  lib = flake.lib pkgs;
+  inherit (lib) version;
+
+  # Script to bump version and regenerate files using Cog
+  versionBumpScript = pkgs.writeShellScript "version-bump" ''
+    set -euo pipefail
+
+    # Parse command line arguments
+    BUMP_TYPE=""
+    VERBOSE=false
+
+    while [[ $# -gt 0 ]]; do
+      case $1 in
+        --patch)
+          BUMP_TYPE="patch"
+          shift
+          ;;
+        --minor)
+          BUMP_TYPE="minor"
+          shift
+          ;;
+        --major)
+          BUMP_TYPE="major"
+          shift
+          ;;
+        --prerelease)
+          BUMP_TYPE="prerelease"
+          shift
+          ;;
+        -v|--verbose)
+          VERBOSE=true
+          shift
+          ;;
+        -h|--help)
+          echo "Usage: version-bump [--patch|--minor|--major|--prerelease] [-v|--verbose] [-h|--help]"
+          echo ""
+          echo "Bump version in nix/lib/version.nix and regenerate all dependent files using Cog."
+          echo ""
+          echo "Options:"
+          echo "  --patch       Increment patch version (e.g., 0.3.0 -> 0.3.1)"
+          echo "  --minor       Increment minor version (e.g., 0.3.0 -> 0.4.0)"
+          echo "  --major       Increment major version (e.g., 0.3.0 -> 1.0.0)"
+          echo "  --prerelease  Add prerelease timestamp (e.g., 0.3.0 -> 0.3.0-2025-July-13-17-24)"
+          echo "  -v, --verbose Enable verbose output"
+          echo "  -h, --help    Show this help message"
+          echo ""
+          echo "Prerelease format: YYYY-Month-DD-HH-MM (UTC time)"
+          echo "This is useful for CI iterations without bumping the actual version."
+          echo ""
+          echo "After updating version.nix, runs 'nix run .#generic-analysis' to"
+          echo "propagate changes via Cog to all files with version templates."
+          exit 0
+          ;;
+        *)
+          echo "Error: Unknown option $1"
+          echo "Use --help for usage information"
+          exit 1
+          ;;
+      esac
+    done
+
+    if [[ -z "$BUMP_TYPE" ]]; then
+      echo "Error: Must specify --patch, --minor, --major, or --prerelease"
+      echo "Use --help for usage information"
+      exit 1
+    fi
+
+    # Get current version components from Nix
+    CURRENT_MAJOR=${builtins.toString version.major}
+    CURRENT_MINOR=${builtins.toString version.minor}
+    CURRENT_PATCH=${builtins.toString version.patch}
+    CURRENT_VERSION="$CURRENT_MAJOR.$CURRENT_MINOR.$CURRENT_PATCH"
+
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "Current version: $CURRENT_VERSION"
+      echo "Bump type: $BUMP_TYPE"
+    fi
+
+    # Calculate new version components and set environment variables for Cog
+    case $BUMP_TYPE in
+      patch)
+        export HTTY_VERSION_MAJOR=$CURRENT_MAJOR
+        export HTTY_VERSION_MINOR=$CURRENT_MINOR
+        export HTTY_VERSION_PATCH=$((CURRENT_PATCH + 1))
+        export HTTY_VERSION_PRERELEASE=""
+        NEW_VERSION="$HTTY_VERSION_MAJOR.$HTTY_VERSION_MINOR.$HTTY_VERSION_PATCH"
+        ;;
+      minor)
+        export HTTY_VERSION_MAJOR=$CURRENT_MAJOR
+        export HTTY_VERSION_MINOR=$((CURRENT_MINOR + 1))
+        export HTTY_VERSION_PATCH=0
+        export HTTY_VERSION_PRERELEASE=""
+        NEW_VERSION="$HTTY_VERSION_MAJOR.$HTTY_VERSION_MINOR.$HTTY_VERSION_PATCH"
+        ;;
+      major)
+        export HTTY_VERSION_MAJOR=$((CURRENT_MAJOR + 1))
+        export HTTY_VERSION_MINOR=0
+        export HTTY_VERSION_PATCH=0
+        export HTTY_VERSION_PRERELEASE=""
+        NEW_VERSION="$HTTY_VERSION_MAJOR.$HTTY_VERSION_MINOR.$HTTY_VERSION_PATCH"
+        ;;
+      prerelease)
+        # Generate UTC timestamp in format: 2025-July-13-17-24
+        UTC_TIMESTAMP=$(${pkgs.coreutils}/bin/date -u '+%Y-%B-%d-%H-%M')
+        export HTTY_VERSION_MAJOR=$CURRENT_MAJOR
+        export HTTY_VERSION_MINOR=$CURRENT_MINOR
+        export HTTY_VERSION_PATCH=$CURRENT_PATCH
+        export HTTY_VERSION_PRERELEASE="$UTC_TIMESTAMP"
+        NEW_VERSION="$CURRENT_MAJOR.$CURRENT_MINOR.$CURRENT_PATCH-$UTC_TIMESTAMP"
+
+        if [[ "$VERBOSE" == "true" ]]; then
+          echo "Generated prerelease timestamp: $UTC_TIMESTAMP"
+        fi
+        ;;
+    esac
+
+    # Update version.nix using Cog
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "Running Cog on nix/lib/version.nix..."
+    fi
+
+    ${pkgs.python3Packages.cogapp}/bin/cog -r nix/lib/version.nix
+
+    echo "Bumping version: $CURRENT_VERSION -> $NEW_VERSION"
+
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "Updated nix/lib/version.nix"
+      echo "Running nix run .#generic-analysis to propagate changes via Cog..."
+    fi
+
+    # Run generic-analysis to propagate the version changes via Cog
+    if [[ "$VERBOSE" == "true" ]]; then
+      ${pkgs.nix}/bin/nix run .#generic-analysis -- -v
+    else
+      ${pkgs.nix}/bin/nix run .#generic-analysis
+    fi
+
+    echo "✅ Version bump complete: $CURRENT_VERSION -> $NEW_VERSION"
+    echo "💡 All files with version templates have been updated via Cog"
+    echo ""
+    if [[ "$BUMP_TYPE" == "prerelease" ]]; then
+      echo "🧪 Prerelease version created for CI testing"
+      echo "💡 Use --patch/--minor/--major for final release"
+    else
+      echo "🚀 Ready to commit and release version $NEW_VERSION"
+      echo ""
+      echo "💡 Suggestion:"
+      echo "git commit -m \"Version Update: $NEW_VERSION\" && git tag v$NEW_VERSION && git push --tags github main"
+    fi
+  '';
+
+in
+pkgs.stdenv.mkDerivation {
+  pname = "version-bump";
+  version = version.version;
+
+  dontUnpack = true;
+  dontBuild = true;
+
+  installPhase = ''
+    mkdir -p $out/bin
+    cp ${versionBumpScript} $out/bin/version-bump
+    chmod +x $out/bin/version-bump
+  '';
+
+  meta = with pkgs.lib; {
+    description = "Version bumping script for htty project with prerelease support";
+    mainProgram = "version-bump";
+    platforms = platforms.unix;
+  };
+}

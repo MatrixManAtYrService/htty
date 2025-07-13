@@ -4,14 +4,14 @@
 let
   # Determine if we're cross-compiling
   isCrossCompiling = targetSystem != null && targetSystem != pkgs.stdenv.hostPlatform.system;
-  
+
   # Get overlays for Rust
   overlays = [ inputs.rust-overlay.overlays.default ];
   pkgsWithRust = import inputs.nixpkgs {
     inherit (pkgs.stdenv.hostPlatform) system;
     inherit overlays;
   };
-  
+
   # Cross-compilation target mappings
   rustTargetMap = {
     "aarch64-linux" = "aarch64-unknown-linux-gnu";
@@ -19,7 +19,7 @@ let
     "aarch64-darwin" = "aarch64-apple-darwin";
     "x86_64-darwin" = "x86_64-apple-darwin";
   };
-  
+
   rustTarget = if targetSystem != null then rustTargetMap.${targetSystem} else null;
 
   rustToolchain = pkgsWithRust.rust-bin.stable.latest.default.override {
@@ -91,12 +91,12 @@ pkgsWithRust.stdenv.mkDerivation {
 
     # Set up environment for cargo and maturin
     export CARGO_TARGET_DIR="./target"
-    
+
     ${if isCrossCompiling then ''
       # Cross-compilation environment for ${targetSystem}
       echo "Cross-compiling for target: ${targetSystem}"
       echo "Rust target: ${rustTarget}"
-      
+
       # Following maturin cross-compilation best practices:
       # https://www.maturin.rs/distribution.html#cross-compiling
       ${if targetSystem == "aarch64-linux" && pkgs.stdenv.isDarwin then ''

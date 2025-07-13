@@ -97,6 +97,16 @@ processed in order.
         help="Wait for a regex pattern to disappear from the terminal output. Can be used multiple times.",
     )
     parser.add_argument(
+        "--version",
+        action="version",
+        # [[[cog
+        # import os
+        # cog.out(f'version="{os.environ["HTTY_VERSION_INFO_HTTY"]}",')
+        # ]]]
+        version="htty 0.2.1-2025-July-13-23-55 (unknown)",
+        # [[[end]]]
+    )
+    parser.add_argument(
         "command",
         nargs="*",
         help="Command to run (must be preceded by --)",
@@ -122,7 +132,9 @@ processed in order.
         return
 
     # Build action sequence from arguments
-    actions: list[tuple[str, Optional[str]]] = []
+    # Avoid triple-bracket pattern that confuses Cog
+    actions: list[tuple[str, Optional[str]
+                       ]] = []
 
     # Simple approach: collect all -k and -s in order they appear
     arg_iter = iter(args_before_command)

@@ -218,12 +218,12 @@ Following the same strategy as polars and other Rust-based Python packages:
    - Synthesize full version string (major.minor.patch)
 2. Enhance `nix/packages/generic-analysis.nix` to propagate version updates
    - Update `htty-core/Cargo.toml`
-   - Update `htty/pyproject.toml` 
+   - Update `htty/pyproject.toml`
    - Update any other files that reference version
    - Use cog templating to reference version environment variables
 3. Add `--version` flag support to all binaries
    - `ht` binary: Print version and git SHA
-   - `htty` command: Print version and git SHA  
+   - `htty` command: Print version and git SHA
    - `htty_core` module: Print version and git SHA
 4. Create `nix run .#version-bump` script for version management
    - Support `--patch`, `--minor`, `--major` flags

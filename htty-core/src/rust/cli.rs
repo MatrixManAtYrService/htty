@@ -44,7 +44,12 @@ fn parse_args(args: &[String]) -> Result<Cli> {
                 std::process::exit(0);
             }
             "--version" | "-V" => {
-                println!("ht 0.3.0");
+                // [[[cog
+                // import os
+                // cog.out(f'println!("{os.environ["HTTY_VERSION_INFO_HT"]}");')
+                // ]]]
+                println!("ht 0.2.1-2025-July-13-23-55 (unknown)");
+                // [[[end]]]
                 std::process::exit(0);
             }
             "--size" => {
