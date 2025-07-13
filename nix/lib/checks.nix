@@ -246,8 +246,36 @@ let
       dependencies = with pkgs; [ python3 python3Packages.cogapp ];
       environment = {
         # Export constants as environment variables for Cog
+        # Terminal configuration
         HTTY_DEFAULT_COLS = toString constants.terminal.default_cols;
         HTTY_DEFAULT_ROWS = toString constants.terminal.default_rows;
+
+        # Timing constants (in milliseconds)
+        HTTY_DEFAULT_SLEEP_AFTER_KEYS_MS = toString constants.timing.default_sleep_after_keys_ms;
+        HTTY_SUBPROCESS_EXIT_DETECTION_DELAY_MS = toString constants.timing.subprocess_exit_detection_delay_ms;
+        HTTY_COORDINATION_DELAY_MS = toString constants.timing.coordination_delay_ms;
+        HTTY_GENERAL_SLEEP_INTERVAL_MS = toString constants.timing.general_sleep_interval_ms;
+        HTTY_DEFAULT_SUBPROCESS_WAIT_TIMEOUT_MS = toString constants.timing.default_subprocess_wait_timeout_ms;
+        HTTY_DEFAULT_SNAPSHOT_TIMEOUT_MS = toString constants.timing.default_snapshot_timeout_ms;
+        HTTY_DEFAULT_EXIT_TIMEOUT_MS = toString constants.timing.default_exit_timeout_ms;
+        HTTY_DEFAULT_GRACEFUL_TERMINATION_TIMEOUT_MS = toString constants.timing.default_graceful_termination_timeout_ms;
+        HTTY_DEFAULT_EXPECT_TIMEOUT_MS = toString constants.timing.default_expect_timeout_ms;
+        HTTY_SNAPSHOT_RETRY_TIMEOUT_MS = toString constants.timing.snapshot_retry_timeout_ms;
+        HTTY_SUBSCRIPTION_TIMEOUT_MS = toString constants.timing.subscription_timeout_ms;
+        HTTY_EMPTINESS_CHECK_INTERVAL_MS = toString constants.timing.emptiness_check_interval_ms;
+        HTTY_FIFO_MONITORING_INTERVAL_MS = toString constants.timing.fifo_monitoring_interval_ms;
+        HTTY_PTY_HEARTBEAT_INTERVAL_MS = toString constants.timing.pty_heartbeat_interval_ms;
+        HTTY_HEARTBEAT_CHECK_DELAY_MS = toString constants.timing.heartbeat_check_delay_ms;
+        HTTY_COMMAND_CHANNEL_CHECK_DELAY_MS = toString constants.timing.command_channel_check_delay_ms;
+
+        # Buffer sizes and limits
+        HTTY_READ_BUF_SIZE = toString constants.buffers.read_buf_size;
+        HTTY_CHANNEL_BUFFER_SIZE = toString constants.buffers.channel_buffer_size;
+        HTTY_SINGLE_SLOT_CHANNEL_SIZE = toString constants.buffers.single_slot_channel_size;
+        HTTY_BROADCAST_CHANNEL_SIZE = toString constants.buffers.broadcast_channel_size;
+
+        # Retry counts and thresholds
+        HTTY_MAX_SNAPSHOT_RETRIES = toString constants.limits.max_snapshot_retries;
       };
       command = ''
         echo "Generating constants files using Cog from nix/lib/constants.nix..."
