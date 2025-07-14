@@ -47,8 +47,7 @@ python-source = "src/python"
 strip = true
 bindings = "bin"
 auditwheel = "skip"
-# Let maturin auto-detect appropriate compatibility
-# compatibility = "auto"
+# Compatibility handled by maturin-action in CI
 # Always build release builds
 profile = "release"
 include = [

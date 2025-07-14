@@ -9,6 +9,19 @@ runs:
     - name: Restore and save Nix store
       uses: nix-community/cache-nix-action@v6
       with:
-        primary-key: nix-store
-        # Collect garbage until store is at most 8GB before saving cache  
+        # restore and save a cache using this key
+        primary-key: nix-${{ hashFiles('**/*.nix', '**/flake.lock') }}
+        # if there's no cache hit, restore a cache by this prefix
+        restore-prefixes-first-match: nix-
+        # collect garbage until the Nix store size (in bytes) is at most this number
         gc-max-store-size: 8G
+        # do purge caches
+        purge: true
+        # purge all versions of the cache
+        purge-prefixes: nix-
+        # created more than this number of seconds ago
+        purge-created: 0
+        # or, last accessed more than this number of seconds ago
+        purge-last-accessed: 0
+        # except any version with the key that is the same as the `primary-key`
+        purge-primary-key: never

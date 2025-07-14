@@ -19,19 +19,15 @@ jobs:
         include:
           # Linux builds
           - os: ubuntu-latest
-            system: x86_64-linux
-            build_type: native
+            target: x86_64-unknown-linux-gnu
           - os: ubuntu-latest
-            system: aarch64-linux
-            build_type: cross-compiled
+            target: aarch64-unknown-linux-gnu
 
           # macOS builds
           - os: macos-13  # Intel
-            system: x86_64-darwin
-            build_type: native
+            target: x86_64-apple-darwin
           - os: macos-latest  # ARM64
-            system: aarch64-darwin
-            build_type: native
+            target: aarch64-apple-darwin
 
     runs-on: ${{ matrix.os }}
     
@@ -39,49 +35,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Nix
-        uses: ./.github/actions/setup-nix
-
-      - name: Set up QEMU for cross-compilation
-        if: matrix.build_type == 'cross-compiled'
-        run: |
-          echo "Setting up QEMU for cross-compilation"
-          # Enable emulation for aarch64
-          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-          # Add aarch64-linux to supported systems
-          sudo mkdir -p /etc/nix
-          echo "extra-platforms = aarch64-linux" | sudo tee -a /etc/nix/nix.conf
-
       - name: Build htty-core wheel
-        run: |
-          echo "🏗️ Building htty-core wheel for ${{ matrix.system }}"
-          
-          if [ "${{ matrix.build_type }}" = "cross-compiled" ]; then
-            echo "🔀 Cross-compiling for ${{ matrix.system }}"
-            case "${{ matrix.system }}" in
-              aarch64-linux)
-                nix build .#htty-core-wheel-cross-aarch64-linux
-                ;;
-              *)
-                echo "❌ Unsupported cross-compilation target: ${{ matrix.system }}"
-                exit 1
-                ;;
-            esac
-          else
-            echo "🏠 Building htty-core natively for ${{ matrix.system }}"
-            nix build .#htty-core-wheel
-          fi
-          
-          # Copy wheel to dist directory
-          mkdir -p dist
-          cp result/*.whl dist/
-          
-          echo "📦 Built wheel:"
-          ls -la dist/
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist --manifest-path htty-core/Cargo.toml
+          sccache: 'true'
+          manylinux: auto
 
       - name: Test wheel installation (native builds only)
-        # Only test on native builds since cross-compiled wheels need target architecture
-        if: matrix.build_type == 'native'
+        # Skip cross-compiled aarch64 builds on x86_64 runners
+        if: matrix.target != 'aarch64-unknown-linux-gnu'
         run: |
           echo "🧪 Testing htty-core wheel installation and functionality"
           WHEEL_PATH=$(ls dist/*.whl | head -1)
@@ -111,7 +75,7 @@ jobs:
       - name: Upload htty-core wheel
         uses: actions/upload-artifact@v4
         with:
-          name: htty-core-wheel-${{ matrix.system }}
+          name: htty-core-wheel-${{ matrix.target }}
           path: "dist/*.whl"
 
   build-htty-sdist:
