@@ -4,7 +4,7 @@ name = "htty_core"
 # import os
 # cog.out(f'version = "{os.environ["HTTY_VERSION"]}"')
 # ]]]
-version = "0.2.9"
+version = "0.2.10"
 # [[[end]]]
 edition = "2021"
 rust-version = "1.74"
