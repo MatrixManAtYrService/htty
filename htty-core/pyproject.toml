@@ -46,7 +46,9 @@ analysis = [
 python-source = "src/python"
 strip = true
 bindings = "bin"
-auditwheel = "repair"
+auditwheel = "skip"
+# Force manylinux compatibility for PyPI
+compatibility = "manylinux_2_28"
 # Always build release builds
 profile = "release"
 include = [
