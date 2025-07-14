@@ -77,14 +77,22 @@ jobs:
           
           echo "📦 Installing wheel: $WHEEL_NAME"
           
-          # Create a test environment with Python
-          nix develop .#pytest-empty --command bash -c "
-            pip install --force-reinstall --verbose $WHEEL_PATH
-            echo '🔧 Testing Python import...'
-            python -c 'import htty_core; print(\"✅ htty_core import successful\")'
-            echo '🔧 Testing binary availability...'
-            python -c 'import htty_core; print(f\"✅ Binary path: {htty_core.get_ht_binary_path()}\")'
-          "
+          # Create a clean Python environment for testing wheel installation
+          python -m venv test_env
+          source test_env/bin/activate
+          
+          # Install and test the wheel
+          pip install --force-reinstall --verbose "$WHEEL_PATH"
+          
+          echo "🔧 Testing Python import..."
+          python -c "import htty_core; print('✅ htty_core import successful')"
+          
+          echo "🔧 Testing binary availability..."
+          python -c "import htty_core; print(f'✅ Binary path: {htty_core.get_ht_binary_path()}')"
+          
+          # Clean up
+          deactivate
+          rm -rf test_env
           
           echo "🎉 htty-core wheel testing complete!"
 
