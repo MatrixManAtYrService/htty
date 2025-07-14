@@ -217,6 +217,8 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: packages/
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
 
       - name: Dry run complete
         if: ${{ inputs.dry-run }}
