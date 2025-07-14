@@ -47,8 +47,8 @@ python-source = "src/python"
 strip = true
 bindings = "bin"
 auditwheel = "skip"
-# Force manylinux compatibility for PyPI
-compatibility = "manylinux_2_28"
+# Let maturin auto-detect appropriate compatibility
+# compatibility = "auto"
 # Always build release builds
 profile = "release"
 include = [
