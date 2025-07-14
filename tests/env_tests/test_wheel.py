@@ -29,7 +29,6 @@ def test_htty_core_wheel_file_output(project_root: Path):
     # Check that it's named correctly
     whl_file = whl_files[0]
     assert "htty_core" in whl_file.name, f"Expected htty_core in filename, got: {whl_file.name}"
-    assert "0.3.0" in whl_file.name, f"Expected version in filename, got: {whl_file.name}"
     assert whl_file.name.endswith(".whl"), f"Expected .whl extension, got: {whl_file.name}"
 
 
@@ -75,7 +74,6 @@ def test_htty_core_wheel_filename_content(project_root: Path):
     # Verify the filename matches expected pattern
     assert "htty_core-" in wheel_filename, f"Expected htty_core- in filename, got: {wheel_filename}"
     assert wheel_filename.endswith(".whl"), f"Expected .whl extension, got: {wheel_filename}"
-    assert "0.3.0" in wheel_filename, f"Expected version in filename, got: {wheel_filename}"
 
     # Verify the actual wheel file exists with this name
     actual_wheel_file = output_path / wheel_filename

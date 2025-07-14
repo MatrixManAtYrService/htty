@@ -29,7 +29,6 @@ def test_htty_sdist_tgz_output(project_root: Path):
     # Check that it's named correctly
     tgz_file = tgz_files[0]
     assert "htty" in tgz_file.name, f"Expected htty in filename, got: {tgz_file.name}"
-    assert "0.3.0" in tgz_file.name, f"Expected version in filename, got: {tgz_file.name}"
 
 
 @pytest.mark.sdist

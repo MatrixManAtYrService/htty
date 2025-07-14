@@ -14,10 +14,10 @@ set -x
 
 # Code analysis tools grouped by language
 # (nom does not support the run subcommand, so they always use nix)
+nix run .#codegen
 nix run .#nix-analysis
 nix run .#rust-analysis
 nix run .#python-analysis
-nix run .#generic-analysis
 
 # Tests below are organized from fastest to slowest
 # Rust unit tests (JSON parsing, key handling, etc.)

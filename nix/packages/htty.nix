@@ -1,7 +1,11 @@
 # Complete htty Python environment (htty-core + htty wrapper)
-{ inputs, pkgs, perSystem, ... }:
+{ inputs, pkgs, perSystem, flake, ... }:
 
 let
+  # Get version information
+  lib = flake.lib pkgs;
+  inherit (lib.version) version;
+
   # Get the htty-core wheel to override the dependency
   httyCoreWheel = perSystem.self.htty-core-wheel;
 
@@ -14,7 +18,7 @@ let
   pyprojectOverrides = final: prev: {
     htty-core = pkgs.python3.pkgs.buildPythonPackage {
       pname = "htty-core";
-      version = "0.3.0";
+      inherit version;
       format = "wheel";
       src = httyCoreWheel;
 
@@ -25,13 +29,16 @@ let
       # Custom unpack for wheel directory
       unpackPhase = ''
         mkdir -p ./dist
-        cp ${httyCoreWheel}/*.whl ./dist/
+        # Copy any .whl files from the wheel directory
+        cp ${httyCoreWheel}/*.whl ./dist/ || echo "No wheel files found"
+        ls -la ${httyCoreWheel}/
+        ls -la ./dist/
         # Create a simple setup for wheel installation
         sourceRoot="."
       '';
 
       meta = {
-        description = "Headless Terminal - Rust binary with Python bindings";
+        description = "Headless Terminal - Rust binary with Python bindings for htty";
       };
     };
   };

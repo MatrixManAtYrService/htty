@@ -1,4 +1,4 @@
-# Generic code analysis tools
+# Code generation tools
 { flake, pkgs, ... }:
 
 let
@@ -29,8 +29,8 @@ let
   };
 in
 createAnalysisPackage {
-  name = "generic-analysis";
-  description = "Generic code analysis";
+  name = "codegen";
+  description = "Code generation";
   checks = {
     trim-whitespace = trimWhitespaceCheck;
     generate-constants = generateConstantsCheck;

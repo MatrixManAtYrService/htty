@@ -17,19 +17,20 @@ let
   # ]]]
   major = 0;
   minor = 2;
-  patch = 1;
-  prerelease = "2025-July-13-23-55"; # Set by --prerelease, empty for stable releases
+  patch = 3;
+  prerelease = "dev202507140318"; # Set by --prerelease, empty for stable releases
   # [[[end]]]
 
   # Get git SHA from current repository
   gitSha = pkgs.lib.substring 0 8 (
     if builtins.pathExists ./../.. && builtins.pathExists ./../../.git then
-      builtins.readFile (
-        pkgs.runCommand "get-git-sha" {} ''
-          cd ${toString ./../..}
-          ${pkgs.git}/bin/git rev-parse HEAD | tr -d '\n' > $out
-        ''
-      )
+      builtins.readFile
+        (
+          pkgs.runCommand "get-git-sha" { } ''
+            cd ${toString ./../..}
+            ${pkgs.git}/bin/git rev-parse HEAD | tr -d '\n' > $out
+          ''
+        )
     else
       "unknown"
   );

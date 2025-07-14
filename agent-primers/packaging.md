@@ -49,7 +49,7 @@ alterations to `PYTHONPATH`).
 - `nix-analysis.nix`
 - `rust-analysis.nix`
 - `python-analysis.nix`
-- `generic-analysis.nix`
+- `codegen.nix`
 
 ### Nix Devshells
 
@@ -79,7 +79,7 @@ alterations to `PYTHONPATH`).
 | `nix-analysis` | Package | Nix code analysis (deadnix, nixpkgs-fmt, statix) | `nix run .#nix-analysis` |
 | `rust-analysis` | Package | Rust code analysis (clippy) | `nix run .#rust-analysis` |
 | `python-analysis` | Package | Python code analysis (ruff, pyright) | `nix run .#python-analysis` |
-| `generic-analysis` | Package | Generic code analysis (trim-whitespace) | `nix run .#generic-analysis` |
+| `codegen` | Package | Code generation (cog, trim-whitespace) | `nix run .#codegen` |
 | `default` | Devshell | Default development environment | `nix develop` |
 | `pytest-empty` | Devshell | Testing environment with no htty packages | `nix develop .#pytest-empty` |
 | `pytest-core` | Devshell | Testing environment with htty-core only | `nix develop .#pytest-core` |

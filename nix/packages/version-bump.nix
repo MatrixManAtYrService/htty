@@ -51,7 +51,7 @@ let
           echo "Prerelease format: YYYY-Month-DD-HH-MM (UTC time)"
           echo "This is useful for CI iterations without bumping the actual version."
           echo ""
-          echo "After updating version.nix, runs 'nix run .#generic-analysis' to"
+          echo "After updating version.nix, runs 'nix run .#codegen' to"
           echo "propagate changes via Cog to all files with version templates."
           exit 0
           ;;
@@ -104,8 +104,8 @@ let
         NEW_VERSION="$HTTY_VERSION_MAJOR.$HTTY_VERSION_MINOR.$HTTY_VERSION_PATCH"
         ;;
       prerelease)
-        # Generate UTC timestamp in format: 2025-July-13-17-24
-        UTC_TIMESTAMP=$(${pkgs.coreutils}/bin/date -u '+%Y-%B-%d-%H-%M')
+        # Generate UTC timestamp in Python-compatible format: dev202507131724
+        UTC_TIMESTAMP=$(${pkgs.coreutils}/bin/date -u '+dev%Y%m%d%H%M')
         export HTTY_VERSION_MAJOR=$CURRENT_MAJOR
         export HTTY_VERSION_MINOR=$CURRENT_MINOR
         export HTTY_VERSION_PATCH=$CURRENT_PATCH
@@ -129,15 +129,31 @@ let
 
     if [[ "$VERBOSE" == "true" ]]; then
       echo "Updated nix/lib/version.nix"
-      echo "Running nix run .#generic-analysis to propagate changes via Cog..."
+      echo "Running nix run .#codegen to propagate changes via Cog..."
     fi
 
-    # Run generic-analysis to propagate the version changes via Cog
+    # Run codegen to propagate the version changes via Cog
     if [[ "$VERBOSE" == "true" ]]; then
-      ${pkgs.nix}/bin/nix run .#generic-analysis -- -v
+      ${pkgs.nix}/bin/nix run .#codegen -- -v
     else
-      ${pkgs.nix}/bin/nix run .#generic-analysis
+      ${pkgs.nix}/bin/nix run .#codegen
     fi
+
+    # Update lock files to reflect new version
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "Updating Cargo.lock..."
+    fi
+
+    # Update Cargo.lock by updating dependency info without building
+    ${pkgs.cargo}/bin/cargo update --manifest-path htty-core/Cargo.toml --package htty_core
+
+    if [[ "$VERBOSE" == "true" ]]; then
+      echo "Updating uv.lock files..."
+    fi
+
+    # Update uv.lock files by running lock command (doesn't require building)
+    (cd htty-core && ${pkgs.uv}/bin/uv lock)
+    (cd htty && ${pkgs.uv}/bin/uv lock)
 
     echo "✅ Version bump complete: $CURRENT_VERSION -> $NEW_VERSION"
     echo "💡 All files with version templates have been updated via Cog"
@@ -156,7 +172,7 @@ let
 in
 pkgs.stdenv.mkDerivation {
   pname = "version-bump";
-  version = version.version;
+  inherit (version) version;
 
   dontUnpack = true;
   dontBuild = true;

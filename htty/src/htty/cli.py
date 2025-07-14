@@ -8,12 +8,15 @@ import contextlib
 import logging
 import sys
 import time
-from typing import Optional
+from typing import Optional, TypeAlias
 
 from htty_core import HtEvent
 
 from .ht import HtWrapper, run
 from .keys import KeyInput
+
+# Type alias to avoid triple bracket pattern that confuses Cog
+ActionTuple: TypeAlias = tuple[str, Optional[str]]
 
 
 def parse_keys(keys_str: str, delimiter: str = ",") -> list[KeyInput]:
@@ -103,7 +106,7 @@ processed in order.
         # import os
         # cog.out(f'version="{os.environ["HTTY_VERSION_INFO_HTTY"]}",')
         # ]]]
-        version="htty 0.2.1-2025-July-13-23-55 (unknown)",
+        version="htty 0.2.3-dev202507140318 (unknown)",
         # [[[end]]]
     )
     parser.add_argument(
@@ -132,9 +135,7 @@ processed in order.
         return
 
     # Build action sequence from arguments
-    # Avoid triple-bracket pattern that confuses Cog
-    actions: list[tuple[str, Optional[str]
-                       ]] = []
+    actions: list[ActionTuple] = []
 
     # Simple approach: collect all -k and -s in order they appear
     arg_iter = iter(args_before_command)

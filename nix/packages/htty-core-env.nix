@@ -1,13 +1,17 @@
-# Create Python environment with htty-core installed
 { pkgs, perSystem, ... }:
 
 let
-  # Get the htty-core wheel from our packages
+  # Get the htty-core wheel directory from our packages
   httyCoreWheel = perSystem.self.htty-core-wheel;
 
   # Get project metadata
   pyprojectToml = builtins.fromTOML (builtins.readFile ../../htty-core/pyproject.toml);
   inherit (pyprojectToml.project) version;
+
+  # Remove any trailing newline or whitespace
+  wheelFilenameRaw = builtins.readFile "${httyCoreWheel}/wheel-filename.txt";
+  wheelFilenameClean = builtins.match "[ \t\r\n]*([^\n\r \t]+)[ \t\r\n]*" wheelFilenameRaw;
+  actualWheelFilename = if wheelFilenameClean != null then builtins.elemAt wheelFilenameClean 0 else throw "Could not parse wheel-filename.txt (got: '${wheelFilenameRaw}')";
 
   # Create the Python package by properly installing the wheel
   httyCorePkg = pkgs.python3.pkgs.buildPythonPackage {
@@ -15,16 +19,12 @@ let
     inherit version;
     format = "wheel";
 
-    # Use the wheel as source
-    src = "${httyCoreWheel}/htty_core-${version}-py3-none-macosx_11_0_arm64.whl";
+    # Use the wheel as source, dynamically determined
+    src = "${httyCoreWheel}/${actualWheelFilename}";
 
-    # Don't try to build - it's already built
     dontBuild = true;
 
-    # Extract and install scripts properly
     postInstall = ''
-      # The wheel should have installed scripts to $out/bin already
-      # Let's verify and make sure they're executable
       if [ -f "$out/bin/ht" ]; then
         chmod +x "$out/bin/ht"
         echo "Found and made executable: $out/bin/ht"
@@ -42,9 +42,8 @@ let
     };
   };
 in
-# Return the environment with our package
 (pkgs.python3.withPackages (ps: [ httyCorePkg ])).overrideAttrs (old: {
   passthru = (old.passthru or { }) // {
-    tests = { }; # Prevent blueprint from auto-generating problematic tests
+    tests = { };
   };
 })

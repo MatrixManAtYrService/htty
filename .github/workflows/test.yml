@@ -1,0 +1,74 @@
+name: Test
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'htty-core/**'
+      - 'htty/**'
+      - 'nix/**'
+      - '*.nix'
+      - 'flake.lock'
+      - '.github/**'
+  push:
+    branches:
+      - main
+
+jobs:
+  lint-and-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Nix
+        uses: ./.github/actions/setup-nix
+
+      - name: Run code generation
+        run: nix run .#codegen
+
+      - name: Run Nix analysis
+        run: nix run .#nix-analysis
+
+      - name: Run Rust analysis
+        run: nix run .#rust-analysis
+
+      - name: Run Python analysis
+        run: nix run .#python-analysis
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Nix
+        uses: ./.github/actions/setup-nix
+
+      - name: Run Rust unit tests
+        run: nix develop .# --command bash -c "cd htty-core && cargo test"
+
+      - name: Run pytest-empty tests
+        run: nix develop .#pytest-empty --command pytest -m empty tests/env_tests/
+
+      - name: Run pytest-core tests
+        run: nix develop .#pytest-core --command pytest tests/lib_tests/test_htty_core.py
+
+      - name: Run pytest-wheel tests
+        run: nix develop .#pytest-wheel --command pytest -m wheel tests/env_tests/
+
+      - name: Run pytest-sdist tests
+        run: nix develop .#pytest-sdist --command pytest -m sdist tests/env_tests/
+
+      - name: Run pytest-htty tests
+        run: nix develop .#pytest-htty --command pytest -m htty tests/env_tests/
+
+      - name: Run pytest-cli tests
+        run: nix develop .#pytest-cli --command pytest -m cli tests/env_tests/ tests/cli_tests
+
+      - name: Run full pytest-htty integration tests
+        run: nix develop .#pytest-htty --command pytest -m htty
+
+      - name: Generate documentation
+        run: nix run .#python-docs

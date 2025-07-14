@@ -3,57 +3,201 @@ name: Release
 on:
   push:
     tags:
-      - "v*.*.*"
+      - '*'
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Perform a dry run (build packages but do not publish)'
+        type: boolean
+        default: false
 
 jobs:
-  publish:
-    name: ${{ matrix.target }}
-    runs-on: ${{ matrix.os }}
+  build-htty-core-wheels:
     strategy:
+      fail-fast: false
       matrix:
         include:
+          # Linux builds
           - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            use-cross: false
-
+            system: x86_64-linux
+            build_type: native
           - os: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-            use-cross: false
+            system: aarch64-linux
+            build_type: cross-compiled
 
-          - os: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            use-cross: true
+          # macOS builds
+          - os: macos-13  # Intel
+            system: x86_64-darwin
+            build_type: native
+          - os: macos-latest  # ARM64
+            system: aarch64-darwin
+            build_type: native
 
-          - os: macos-latest
-            target: x86_64-apple-darwin
-            use-cross: false
-
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            use-cross: false
-
+    runs-on: ${{ matrix.os }}
+    
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
-          target: ${{ matrix.target }}
+      - name: Setup Nix
+        uses: ./.github/actions/setup-nix
 
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: ${{ matrix.use-cross }}
-          command: build
-          args: --target ${{ matrix.target }} --release --locked
+      - name: Build htty-core wheel
+        run: |
+          echo "🏗️ Building htty-core wheel for ${{ matrix.system }}"
+          
+          if [ "${{ matrix.build_type }}" = "cross-compiled" ]; then
+            echo "🔀 Cross-compiling for ${{ matrix.system }}"
+            nix build .#htty-core-wheel --argstr targetSystem ${{ matrix.system }}
+          else
+            echo "🏠 Building htty-core natively for ${{ matrix.system }}"
+            nix build .#htty-core-wheel
+          fi
+          
+          # Copy wheel to dist directory
+          mkdir -p dist
+          cp result/*.whl dist/
+          
+          echo "📦 Built wheel:"
+          ls -la dist/
 
-      - name: Upload binaries to the release
-        uses: svenstaro/upload-release-action@v2
+      - name: Test wheel installation (native builds only)
+        # Only test on native builds since cross-compiled wheels need target architecture
+        if: matrix.build_type == 'native'
+        run: |
+          echo "🧪 Testing htty-core wheel installation and functionality"
+          WHEEL_PATH=$(ls dist/*.whl | head -1)
+          WHEEL_NAME=$(basename "$WHEEL_PATH")
+          
+          echo "📦 Installing wheel: $WHEEL_NAME"
+          
+          # Create a test environment with Python
+          nix develop .#pytest-empty --command bash -c "
+            pip install --force-reinstall --verbose $WHEEL_PATH
+            echo '🔧 Testing Python import...'
+            python -c 'import htty_core; print(\"✅ htty_core import successful\")'
+            echo '🔧 Testing binary availability...'
+            python -c 'import htty_core; print(f\"✅ Binary path: {htty_core.get_ht_binary_path()}\")'
+          "
+          
+          echo "🎉 htty-core wheel testing complete!"
+
+      - name: Upload htty-core wheel
+        uses: actions/upload-artifact@v4
         with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: target/${{ matrix.target }}/release/ht
-          asset_name: ht-${{ matrix.target }}
-          tag: ${{ github.ref }}
+          name: htty-core-wheel-${{ matrix.system }}
+          path: "dist/*.whl"
+
+  build-htty-sdist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Nix
+        uses: ./.github/actions/setup-nix
+
+      - name: Build htty source distribution
+        run: |
+          echo "📦 Building htty source distribution"
+          nix build .#htty-sdist
+          
+          # Copy sdist to dist directory
+          mkdir -p dist
+          cp result/*.tar.gz dist/
+          
+          echo "📦 Built source distribution:"
+          ls -la dist/
+
+      - name: Upload htty sdist
+        uses: actions/upload-artifact@v4
+        with:
+          name: htty-sdist
+          path: "dist/*.tar.gz"
+
+  publish-to-pypi:
+    needs: [build-htty-core-wheels, build-htty-sdist]
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write  # For trusted publishing
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Nix
+        uses: ./.github/actions/setup-nix
+
+      - name: Create packages directory
+        run: mkdir -p packages/
+
+      - name: Download all htty-core wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: htty-core-wheel-*
+          path: packages/
+          merge-multiple: true
+
+      - name: Download htty source distribution
+        uses: actions/download-artifact@v4
+        with:
+          name: htty-sdist
+          path: packages/
+
+      - name: Verify packages for publication
+        run: |
+          echo "📦 Packages to be published:"
+          ls -la packages/
+          
+          # Count packages
+          HTTY_CORE_WHEELS=$(ls packages/htty_core-*.whl 2>/dev/null | wc -l)
+          HTTY_SDIST=$(ls packages/htty-*.tar.gz 2>/dev/null | wc -l)
+          
+          echo "   htty-core wheels: $HTTY_CORE_WHEELS"
+          echo "   htty source distributions: $HTTY_SDIST"
+          
+          # Verify we have expected packages
+          if [ "$HTTY_CORE_WHEELS" -eq 0 ]; then
+            echo "❌ ERROR: No htty-core wheels found"
+            exit 1
+          fi
+          
+          if [ "$HTTY_SDIST" -eq 0 ]; then
+            echo "❌ ERROR: No htty source distribution found"
+            exit 1
+          fi
+          
+          # Expected: 4 htty-core wheels (x86_64-linux, aarch64-linux, x86_64-darwin, aarch64-darwin)
+          if [ "$HTTY_CORE_WHEELS" -ne 4 ]; then
+            echo "⚠️  WARNING: Expected 4 htty-core wheels, found $HTTY_CORE_WHEELS"
+          fi
+          
+          # Expected: 1 htty source distribution
+          if [ "$HTTY_SDIST" -ne 1 ]; then
+            echo "⚠️  WARNING: Expected 1 htty source distribution, found $HTTY_SDIST"
+          fi
+          
+          echo "✅ Package verification complete"
+          
+          # Show package details
+          echo "📋 Package details:"
+          for pkg in packages/*; do
+            echo "  $(basename "$pkg") - $(ls -lh "$pkg" | awk '{print $5}')"
+          done
+
+      - name: Publish to PyPI
+        if: ${{ !inputs.dry-run }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: packages/
+
+      - name: Dry run complete
+        if: ${{ inputs.dry-run }}
+        run: |
+          echo "🏁 Dry run complete - packages built but not published"
+          echo ""
+          echo "📦 Built packages:"
+          ls -la packages/
+          echo ""
+          echo "To publish for real, create a release tag or run workflow without dry-run"
