@@ -100,7 +100,7 @@ jobs:
           python -c "import htty_core; print('✅ htty_core import successful')"
           
           echo "🔧 Testing binary availability..."
-          python -c "import htty_core; print(f'✅ Binary path: {htty_core.get_ht_binary_path()}')"
+          python -c "import htty_core; print(f'✅ Binary path: {htty_core.find_ht_binary()}')"
           
           # Clean up
           deactivate
