@@ -11,5 +11,5 @@ __all__ = ["HtArgs", "HtEvent", "find_ht_binary", "run", "__version__"]
 # import os
 # cog.out(f'__version__ = "{os.environ["HTTY_VERSION"]}"')
 # ]]]
-__version__ = "0.2.13"
+__version__ = "0.2.14"
 # [[[end]]]
