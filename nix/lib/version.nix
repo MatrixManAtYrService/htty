@@ -17,7 +17,7 @@ let
   # ]]]
   major = 0;
   minor = 2;
-  patch = 7;
+  patch = 8;
   prerelease = ""; # Set by --prerelease, empty for stable releases
   # [[[end]]]
 
