@@ -9,9 +9,21 @@ let
   # Get the htty-core wheel to override the dependency
   httyCoreWheel = perSystem.self.htty-core-wheel;
 
-  # Load the htty workspace directly
+  # Include only files needed for htty Python package building
+  httySource = inputs.nix-filter.lib {
+    root = ../../htty;
+    include = [
+      "src"
+      "pyproject.toml"
+      "uv.lock"
+      "README.md"
+      "LICENSE"
+    ];
+  };
+
+  # Load the htty workspace from filtered source
   workspace = inputs.uv2nix.lib.workspace.loadWorkspace {
-    workspaceRoot = ../../htty;
+    workspaceRoot = httySource;
   };
 
   # Override htty_core to use our built wheel

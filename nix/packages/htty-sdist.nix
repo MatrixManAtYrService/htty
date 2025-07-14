@@ -1,10 +1,10 @@
 # Pure Python source distribution for htty wrapper
-{ pkgs, ... }:
+{ pkgs, flake, ... }:
 
 let
-  # Get project metadata from htty pyproject.toml
-  pyprojectToml = builtins.fromTOML (builtins.readFile ../../htty/pyproject.toml);
-  inherit (pyprojectToml.project) version;
+  # Get project metadata from centralized source
+  lib = flake.lib pkgs;
+  inherit (lib.version) version;
 
 in
 # Build the htty package as a source distribution (.tar.gz)

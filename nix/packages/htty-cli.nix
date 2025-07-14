@@ -1,13 +1,13 @@
 # CLI package - provides 'htty' command without altering Python environment
-{ pkgs, perSystem, ... }:
+{ pkgs, perSystem, flake, ... }:
 
 let
   # Get the complete htty environment
   httyEnv = perSystem.self.htty;
 
-  # Get project metadata for version
-  cargoToml = builtins.fromTOML (builtins.readFile ../../htty-core/Cargo.toml);
-  inherit (cargoToml.package) version;
+  # Get project metadata for version from centralized source
+  lib = flake.lib pkgs;
+  inherit (lib.version) version;
 in
 
 pkgs.stdenv.mkDerivation {

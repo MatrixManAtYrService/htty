@@ -165,7 +165,7 @@ let
       echo "🚀 Ready to commit and release version $NEW_VERSION"
       echo ""
       echo "💡 Suggestion:"
-      echo "git commit -m \"Version Update: $NEW_VERSION\" && git tag v$NEW_VERSION && git push --tags github main"
+      echo "git add nix htty htty-core .github ; git commit -m \"Version: $NEW_VERSION\" ; git tag v$NEW_VERSION ; git push --tags github main"
     fi
   '';
 

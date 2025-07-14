@@ -1,12 +1,12 @@
-{ pkgs, perSystem, ... }:
+{ pkgs, perSystem, flake, ... }:
 
 let
   # Get the htty-core wheel directory from our packages
   httyCoreWheel = perSystem.self.htty-core-wheel;
 
-  # Get project metadata
-  pyprojectToml = builtins.fromTOML (builtins.readFile ../../htty-core/pyproject.toml);
-  inherit (pyprojectToml.project) version;
+  # Get project metadata from centralized source
+  lib = flake.lib pkgs;
+  inherit (lib.version) version;
 
   # Remove any trailing newline or whitespace
   wheelFilenameRaw = builtins.readFile "${httyCoreWheel}/wheel-filename.txt";

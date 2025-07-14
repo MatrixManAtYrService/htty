@@ -145,7 +145,7 @@ from htty.keys import Press
 # import os
 # cog.out(f'__version__ = "{os.environ["HTTY_VERSION"]}"')
 # ]]]
-__version__ = "0.2.4"
+__version__ = "0.2.5"
 # [[[end]]]
 
 __all__ = [

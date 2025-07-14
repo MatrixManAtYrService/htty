@@ -4,7 +4,7 @@ name = "htty"
 # import os
 # cog.out(f'version = "{os.environ["HTTY_VERSION"]}"')
 # ]]]
-version = "0.2.4"
+version = "0.2.5"
 # [[[end]]]
 description = "Headless Terminal - Python library for terminal automation"
 readme = "README.md"

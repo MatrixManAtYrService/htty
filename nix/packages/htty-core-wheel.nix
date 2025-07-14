@@ -32,32 +32,17 @@ let
   inherit (cargoToml.package) version;
 
   # Include only files needed for htty-core wheel building
-  wheelSource = pkgs.lib.cleanSourceWith {
-    src = ../../htty-core;
-    filter = path: type:
-      let
-        baseName = baseNameOf path;
-        # Get relative path from htty-core root
-        projectRoot = toString ../../htty-core;
-        relPath = pkgs.lib.removePrefix projectRoot (toString path);
-      in
-      # Include Rust source files
-      (pkgs.lib.hasPrefix "/src/rust" relPath) ||
-      # Include Python source files for htty-core
-      (pkgs.lib.hasPrefix "/src/python" relPath) ||
-      # Include assets directory (needed by rust-embed)
-      (pkgs.lib.hasPrefix "/assets" relPath) ||
-      # Include directory structure
-      (relPath == "/src/rust" && type == "directory") ||
-      (relPath == "/src/python" && type == "directory") ||
-      (relPath == "/src" && type == "directory") ||
-      (relPath == "/assets" && type == "directory") ||
-      # Include build configuration files
-      (baseName == "Cargo.toml") ||
-      (baseName == "Cargo.lock") ||
-      (baseName == "pyproject.toml") ||
-      # Include readme (referenced in Cargo.toml)
-      (baseName == "README.md");
+  wheelSource = inputs.nix-filter.lib {
+    root = ../../htty-core;
+    include = [
+      "src/rust"
+      "src/python"
+      "assets"
+      "Cargo.toml"
+      "Cargo.lock"
+      "pyproject.toml"
+      "README.md"
+    ];
   };
 
 in

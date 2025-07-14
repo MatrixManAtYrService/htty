@@ -12,7 +12,17 @@ from typing import Annotated, Any, Optional, TypeAlias, Union
 
 from htty_core import HtArgs, HtEvent, run as htty_core_run
 
-from .constants import DEFAULT_TERMINAL_COLS, DEFAULT_TERMINAL_ROWS
+from .constants import (
+    DEFAULT_EXIT_TIMEOUT,
+    DEFAULT_EXPECT_TIMEOUT,
+    DEFAULT_SLEEP_AFTER_KEYS,
+    DEFAULT_SNAPSHOT_TIMEOUT,
+    DEFAULT_SUBPROCESS_WAIT_TIMEOUT,
+    DEFAULT_TERMINAL_COLS,
+    DEFAULT_TERMINAL_ROWS,
+    MAX_SNAPSHOT_RETRIES,
+    SNAPSHOT_RETRY_TIMEOUT,
+)
 from .html_utils import simple_ansi_to_html
 from .keys import KeyInput, keys_to_strings
 from .proc import CmdProcess, HtProcess, ProcessController
@@ -27,46 +37,26 @@ __all__ = [
     "HtWrapper",
     "ProcessController",
     "run",
-    "DEFAULT_SLEEP_AFTER_KEYS",
-    "DEFAULT_SUBPROCESS_WAIT_TIMEOUT",
-    "DEFAULT_SNAPSHOT_TIMEOUT",
-    "DEFAULT_EXIT_TIMEOUT",
-    "DEFAULT_GRACEFUL_TERMINATION_TIMEOUT",
-    "SNAPSHOT_RETRY_TIMEOUT",
-    "SUBPROCESS_EXIT_DETECTION_DELAY",
-    "MAX_SNAPSHOT_RETRIES",
-    "DEFAULT_EXPECT_TIMEOUT",
 ]
 
-# Constants
-DEFAULT_SLEEP_AFTER_KEYS = 0.1
-DEFAULT_SUBPROCESS_WAIT_TIMEOUT = 2.0
-DEFAULT_SNAPSHOT_TIMEOUT = 5.0
-DEFAULT_EXIT_TIMEOUT = 5.0
-DEFAULT_GRACEFUL_TERMINATION_TIMEOUT = 5.0
-SNAPSHOT_RETRY_TIMEOUT = 0.5
-SUBPROCESS_EXIT_DETECTION_DELAY = 0.2
-MAX_SNAPSHOT_RETRIES = 10
-DEFAULT_EXPECT_TIMEOUT = 5.0
-
-Command: TypeAlias = Annotated[Union[str, list[str]], "use `ht` to run this command"]
+Command: TypeAlias = Annotated[Union[str, list[str]], "run this command (as a subprocess of ht)"]
 Rows: TypeAlias = Annotated[
     Optional[int],
-    f"number of rows for the terminal (None for default: {DEFAULT_TERMINAL_ROWS})",
+    f"number of rows for the headless terminal (default: {DEFAULT_TERMINAL_ROWS})",
 ]
 Cols: TypeAlias = Annotated[
     Optional[int],
-    f"number of columns for the terminal (None for default: {DEFAULT_TERMINAL_COLS})",
+    f"number of columns for the headless terminal (default: {DEFAULT_TERMINAL_COLS})",
 ]
 NoExit: TypeAlias = Annotated[
     bool,
     (
         "whether to keep ht running even after the underlying command exits\n"
-        "(requires the caller to send an explicit 'exit' command,\n "
-        "but allows them to take snapshots after exit)"
+        "allows the caller to take snapshots even after the command has completed\n"
+        "requires the caller to send an explicit 'exit' event to cause ht to exit\n"
     ),
 ]
-Logger: TypeAlias = Annotated[Optional[logging.Logger], "caller-injected logger instance"]
+Logger: TypeAlias = Annotated[Optional[logging.Logger], "callers can override the default logger with their own"]
 
 ExtraSubscribes: TypeAlias = Annotated[Optional[list[HtEvent]], "additional event types to subscribe to"]
 
@@ -525,7 +515,6 @@ def terminal_session(
     command: Command,
     rows: Rows = None,
     cols: Cols = None,
-    no_exit: NoExit = True,
     logger: Logger = None,
     extra_subscribes: ExtraSubscribes = None,
 ) -> Iterator[HtWrapper]:
@@ -553,7 +542,7 @@ def terminal_session(
         command,
         rows=rows,
         cols=cols,
-        no_exit=no_exit,
+        no_exit=True,
         logger=logger,
         extra_subscribes=extra_subscribes,
     )
@@ -604,7 +593,7 @@ def run(
             └── vim
     ```
 
-    For reasons that are documented in [htty-core](../htty-core/htty_core.html#run), the command that ht
+    For reasons that are documented in [htty-core](./htty-core/htty_core.html#run), the command that ht
     runs is not:
 
         sh -c '{command}'
