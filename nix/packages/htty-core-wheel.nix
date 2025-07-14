@@ -100,7 +100,8 @@ pkgsWithRust.stdenv.mkDerivation {
     ${if rustTarget != null then ''
       CARGO_BUILD_ARGS="--release --bin ht --target ${rustTarget}"
       # Use zig for cross-compilation (maturin best practice)
-      MATURIN_BUILD_ARGS="--release --out dist/ --target ${rustTarget} --zig"
+      # --skip-auditwheel lets zig handle manylinux compliance
+      MATURIN_BUILD_ARGS="--release --out dist/ --target ${rustTarget} --zig --skip-auditwheel"
     '' else ''
       CARGO_BUILD_ARGS="--release --bin ht"
       MATURIN_BUILD_ARGS="--release --out dist/"
