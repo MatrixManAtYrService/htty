@@ -15,7 +15,7 @@ try:
 except ImportError:
     # Fallback for Python < 3.11
     from enum import Enum
-    
+
     class StrEnum(str, Enum):
         """String enumeration for Python < 3.11 compatibility."""
         pass
