@@ -69,6 +69,19 @@ let
       exit 1
     fi
 
+    # Check for uncommitted changes
+    if ! ${pkgs.git}/bin/git diff-index --quiet HEAD --; then
+      echo "Error: Uncommitted changes detected in working directory"
+      echo ""
+      echo "Please commit or stash your changes before bumping the version:"
+      echo "  git add . && git commit -m \"Your changes\""
+      echo "  # OR"
+      echo "  git stash"
+      echo ""
+      echo "This prevents version bump conflicts with uncommitted work."
+      exit 1
+    fi
+
     # Get current version components from Nix
     CURRENT_MAJOR=${builtins.toString version.major}
     CURRENT_MINOR=${builtins.toString version.minor}

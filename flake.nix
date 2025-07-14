@@ -5,6 +5,7 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     blueprint.url = "github:numtide/blueprint";
     rust-overlay.url = "github:oxalica/rust-overlay";
+    nix-filter.url = "github:numtide/nix-filter";
     pyproject-nix = {
       url = "github:pyproject-nix/pyproject.nix";
       inputs.nixpkgs.follows = "nixpkgs";

@@ -26,7 +26,10 @@ To do this, it connects processes (like vim) to a [pseudoterminal interface](htt
 Most ANSI interpreters are involved with putting characters on a screen for humans to view directly, but this one is headless, so the text is stored internally for later reference.
 
 htty lets you control the underlying process and take snapshots of the headless terminal's contents at times when you expect it to be interesting.
-This can be handy for testing, like when you want to assert that the user's terminal looks a certain way.
+This can be handy for testing, like when you want to assert that the user's terminal looks a certain way, or for when you have a large amount of subprocess output and you want to show your user only a certain part of it.
+
+It's a bit like a zoomed-out grep:
+Instead of finding lines of a file, it finds snapshots of a terminal session.
 
 # Library Usage
 
