@@ -106,7 +106,7 @@ processed in order.
         # import os
         # cog.out(f'version="{os.environ["HTTY_VERSION_INFO_HTTY"]}",')
         # ]]]
-        version="htty 0.2.17 (unknown)",
+        version="htty 0.2.18 (unknown)",
         # [[[end]]]
     )
     parser.add_argument(
