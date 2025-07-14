@@ -17,8 +17,8 @@ let
   # ]]]
   major = 0;
   minor = 2;
-  patch = 3;
-  prerelease = "dev202507140318"; # Set by --prerelease, empty for stable releases
+  patch = 4;
+  prerelease = ""; # Set by --prerelease, empty for stable releases
   # [[[end]]]
 
   # Get git SHA from current repository

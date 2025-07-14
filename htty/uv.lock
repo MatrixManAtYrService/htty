@@ -76,7 +76,7 @@ wheels = [
 
 [[package]]
 name = "htty"
-version = "0.2.3.dev202507140318"
+version = "0.2.4"
 source = { editable = "." }
 dependencies = [
     { name = "ansi2html" },
@@ -100,7 +100,7 @@ analysis = [{ name = "fawltydeps" }]
 
 [[package]]
 name = "htty-core"
-version = "0.2.3.dev202507140318"
+version = "0.2.4"
 source = { directory = "../htty-core" }
 
 [package.metadata]

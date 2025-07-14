@@ -9,7 +9,6 @@ runs:
     - name: Restore and save Nix store
       uses: nix-community/cache-nix-action@v6
       with:
-        primary-key: nix-store-${{ runner.os }}-${{ hashFiles('**/flake.lock') }}
-        restore-prefixes-first-match: nix-store-${{ runner.os }}
+        primary-key: nix-store
         # Collect garbage until store is at most 8GB before saving cache  
         gc-max-store-size: 8G
