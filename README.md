@@ -8,7 +8,9 @@ It has both a command line interface, and a Python API.
 ### Example
 
  - [sl](https://linuxcommandlibrary.com/man/sl) animates an ascii train
- - `htty` generates snapshots of the train  at specific moments
+ - `htty -r 12 -c 50 --expect Y --snapshot --expect-absent I --snapshot -- sl` animates an ascii train in a 12x50 headless terminal and captures two snapshots:
+   - after the first `Y` appears
+   - after the last `I` dissapears
 
 ![animated ascii-art train](example.svg)
 

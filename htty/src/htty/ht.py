@@ -3,6 +3,7 @@ import logging
 import os
 import queue
 import re
+import shlex
 import subprocess
 import threading
 import time
@@ -639,8 +640,8 @@ def run(
             except ValueError:
                 process_logger.warning(f"Unknown subscription event: {sub}")
 
-    # Convert command to string if it's a list
-    command_str = command if isinstance(command, str) else " ".join(command)
+    # Convert command to string if it's a list, properly escaping shell arguments
+    command_str = command if isinstance(command, str) else " ".join(shlex.quote(arg) for arg in command)
 
     # Create HtArgs and use htty_core.run()
     ht_args = HtArgs(

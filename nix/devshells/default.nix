@@ -105,6 +105,7 @@ pkgsWithRust.mkShell {
     nixd
     nix-output-monitor
     sl
+    nodejs
 
     # Test dependencies
     testVim
