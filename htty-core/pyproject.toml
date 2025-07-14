@@ -47,6 +47,8 @@ python-source = "src/python"
 strip = true
 bindings = "bin"
 auditwheel = "repair"
+# Always build release builds
+profile = "release"
 include = [
     { path = "target/release/ht", format = "wheel" }
 ]
