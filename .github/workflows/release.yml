@@ -51,7 +51,6 @@ jobs:
           # Add aarch64-linux to supported systems
           sudo mkdir -p /etc/nix
           echo "extra-platforms = aarch64-linux" | sudo tee -a /etc/nix/nix.conf
-          sudo systemctl restart nix-daemon
 
       - name: Build htty-core wheel
         run: |
