@@ -4,7 +4,7 @@ name = "htty_core"
 # import os
 # cog.out(f'version = "{os.environ["HTTY_VERSION"]}"')
 # ]]]
-version = "0.2.5"
+version = "0.2.6"
 # [[[end]]]
 description = "Headless Terminal - Rust binary for terminal automation"
 readme = "README.md"
