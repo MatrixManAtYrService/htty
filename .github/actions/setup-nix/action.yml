@@ -5,7 +5,6 @@ runs:
   steps:
     - name: Install Nix
       uses: nixbuild/nix-quick-install-action@v30
-      shell: bash
 
     - name: Restore and save Nix store
       uses: nix-community/cache-nix-action@v6
