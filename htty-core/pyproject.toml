@@ -46,7 +46,7 @@ analysis = [
 python-source = "src/python"
 strip = true
 bindings = "bin"
-auditwheel = "skip"
+auditwheel = "repair"
 include = [
     { path = "target/release/ht", format = "wheel" }
 ]
