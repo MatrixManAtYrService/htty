@@ -100,10 +100,10 @@ pkgsWithRust.stdenv.mkDerivation {
     ${if rustTarget != null then ''
       CARGO_BUILD_ARGS="--release --bin ht --target ${rustTarget}"
       # Use zig for cross-compilation (maturin best practice)
-      MATURIN_BUILD_ARGS="--release --out dist/ --target ${rustTarget} --zig --compatibility manylinux_2_17"
+      MATURIN_BUILD_ARGS="--release --out dist/ --target ${rustTarget} --zig --compatibility manylinux_2_28"
     '' else ''
       CARGO_BUILD_ARGS="--release --bin ht"
-      MATURIN_BUILD_ARGS="--release --out dist/ --compatibility manylinux_2_17"
+      MATURIN_BUILD_ARGS="--release --out dist/ --compatibility manylinux_2_28"
     ''}
 
     # First build the Rust binary with cargo
