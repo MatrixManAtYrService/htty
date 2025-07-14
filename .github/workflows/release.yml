@@ -48,7 +48,13 @@ jobs:
           
           if [ "${{ matrix.build_type }}" = "cross-compiled" ]; then
             echo "🔀 Cross-compiling for ${{ matrix.system }}"
-            nix build .#htty-core-wheel --argstr targetSystem ${{ matrix.system }}
+            nix build --expr "
+              let 
+                flake = builtins.getFlake (toString ./.);
+              in 
+                flake.packages.x86_64-linux.htty-core-wheel.override { 
+                  targetSystem = \"${{ matrix.system }}\"; 
+                }"
           else
             echo "🏠 Building htty-core natively for ${{ matrix.system }}"
             nix build .#htty-core-wheel
