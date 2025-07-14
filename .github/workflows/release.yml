@@ -42,6 +42,16 @@ jobs:
       - name: Setup Nix
         uses: ./.github/actions/setup-nix
 
+      - name: Set up QEMU for cross-compilation
+        if: matrix.build_type == 'cross-compiled'
+        run: |
+          echo "Setting up QEMU for cross-compilation"
+          # Enable emulation for aarch64
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          # Add aarch64-linux to supported systems
+          echo "extra-platforms = aarch64-linux" | sudo tee -a /etc/nix/nix.conf
+          sudo systemctl restart nix-daemon
+
       - name: Build htty-core wheel
         run: |
           echo "🏗️ Building htty-core wheel for ${{ matrix.system }}"
