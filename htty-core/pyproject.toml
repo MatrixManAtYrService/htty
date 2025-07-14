@@ -46,7 +46,7 @@ analysis = [
 python-source = "src/python"
 strip = true
 bindings = "bin"
-auditwheel = "skip"
+auditwheel = "repair"
 # Compatibility handled by maturin-action in CI
 # Always build release builds
 profile = "release"

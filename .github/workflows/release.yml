@@ -41,7 +41,7 @@ jobs:
           target: ${{ matrix.target }}
           args: --release --out dist --manifest-path htty-core/Cargo.toml
           sccache: 'true'
-          manylinux: auto
+          manylinux: ${{ contains(matrix.target, 'linux') && '2_17' || 'auto' }}
 
       - name: Test wheel installation (native builds only)
         # Skip cross-compiled aarch64 builds on x86_64 runners
