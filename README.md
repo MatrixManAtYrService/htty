@@ -1,6 +1,6 @@
 # htty - A fork of [ht](https://github.com/andyk/ht)
 
-![CI](https://github.com/MatrixManAtYrService/htty/workflows/CI/badge.svg)
+![CI](https://github.com/MatrixManAtYrService/htty/workflows/Release/badge.svg)
 
 `htty` controls processes that are attached to a headless terminal.
 It has both a command line interface, and a Python API.
