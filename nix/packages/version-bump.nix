@@ -157,6 +157,7 @@ let
 
     # For htty, use local dependency for uv lock to avoid PyPI dependency resolution
     export HTTY_USE_LOCAL_CORE=true
+    export HTTY_VERSION="$NEW_VERSION"
     ${pkgs.python3Packages.cogapp}/bin/cog -r htty/pyproject.toml
 
     (cd htty && ${pkgs.uv}/bin/uv lock)
