@@ -169,6 +169,7 @@ def test_vim(vim_path: Path) -> None:
         *("-k", ":q!,Enter"),
         "--",
         str(vim_path),
+        "-n",  # -n flag prevents swap files
     ]
 
     ran = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
@@ -246,6 +247,7 @@ def test_vim(vim_path: Path) -> None:
         *("-k", ":q!,Enter"),
         "--",
         str(vim_path),
+        "-n",  # -n flag prevents swap files
     ]
     subprocess.run(cleanup_cmd, check=True, env=env)
 
@@ -313,6 +315,7 @@ def test_readme_example_cli(vim_path: Path) -> None:
         "--snapshot",  # capture final screen
         "--",
         str(vim_path),
+        "-n",  # -n flag prevents swap files
     ]
 
     result = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
@@ -391,6 +394,7 @@ def test_readme_example_cli(vim_path: Path) -> None:
         *("-k", ":q!,Enter"),
         "--",
         str(vim_path),
+        "-n",  # -n flag prevents swap files
     ]
     subprocess.run(cleanup_cmd, check=True, env=env)
 

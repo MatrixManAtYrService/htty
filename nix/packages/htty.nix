@@ -26,7 +26,7 @@ let
     workspaceRoot = httySource;
   };
 
-  # Override htty_core to use our built wheel
+  # Override htty-core to use our local built wheel instead of PyPI version
   pyprojectOverrides = final: prev: {
     htty-core = pkgs.python3.pkgs.buildPythonPackage {
       pname = "htty-core";

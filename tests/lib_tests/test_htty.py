@@ -7,7 +7,6 @@ import logging
 import sys
 import time
 from collections.abc import Generator
-from pathlib import Path
 from textwrap import dedent
 from time import sleep
 
@@ -214,10 +213,10 @@ def test_exit_after_subprocess_finished(hello_world_script: str) -> None:
 
 
 @pytest.mark.htty
-def test_vim_startup_screen(vim_path: Path) -> None:
+def test_vim_startup_screen(vim_cmd: list[str]) -> None:
     """Test equivalent to: htty --snapshot -- vim | grep "VIM - Vi IMproved" """
 
-    proc: HtWrapper = run(str(vim_path), rows=20, cols=50)
+    proc: HtWrapper = run(vim_cmd, rows=20, cols=50)
 
     # Wait for Vim to draw its startup screen
     time.sleep(0.1)  # Small delay to allow screen drawing
@@ -236,10 +235,10 @@ def test_vim_startup_screen(vim_path: Path) -> None:
 
 
 @pytest.mark.htty
-def test_vim_startup_screen_context_manager(vim_path: Path) -> None:
+def test_vim_startup_screen_context_manager(vim_cmd: list[str]) -> None:
     """Test equivalent to: htty --snapshot -- vim | grep "VIM - Vi IMproved" (using context manager)"""
 
-    with terminal_session(str(vim_path), rows=20, cols=50) as vim:
+    with terminal_session(vim_cmd, rows=20, cols=50) as vim:
         # Small delay to allow vim to draw its startup screen
         # Without this, we might snapshot before the screen is ready
         sleep(0.1)
@@ -250,11 +249,11 @@ def test_vim_startup_screen_context_manager(vim_path: Path) -> None:
 
 
 @pytest.mark.htty
-def test_vim_duplicate_line(vim_path: Path) -> None:
+def test_vim_duplicate_line(vim_cmd: list[str]) -> None:
     """Test equivalent to: htty --rows 5 --cols 20 -k 'ihello,Escape' --snapshot
     -k 'Vyp,Escape' --snapshot -k ':q!,Enter' -- vim"""
 
-    proc = run(str(vim_path), rows=5, cols=20)
+    proc = run(vim_cmd, rows=5, cols=20)
 
     # Send keys: "ihello,Escape" (enter insert mode, type hello, exit insert mode)
     proc.send_keys("i")
@@ -284,8 +283,8 @@ def test_vim_duplicate_line(vim_path: Path) -> None:
 
 
 @pytest.mark.htty
-def test_readme_example(vim_path: Path, test_logger: logging.Logger) -> None:
-    with terminal_session(str(vim_path), rows=20, cols=50, logger=test_logger) as vim:
+def test_readme_example(vim_cmd: list[str], test_logger: logging.Logger) -> None:
+    with terminal_session(vim_cmd, rows=20, cols=50, logger=test_logger) as vim:
         vim.expect("version 9.1.1336")  # wait for vim to finish drawing its startup screen
         startup = vim.snapshot()
 
