@@ -7,16 +7,17 @@ It has both a command line interface, and a Python API.
 
 ### Example
 
- - [sl](https://linuxcommandlibrary.com/man/sl) animates an ascii train
- - `htty -r 12 -c 50 --expect Y --snapshot --expect-absent I --snapshot -- sl` animates an ascii train in a 12x50 headless terminal and captures two snapshots:
-   - after the first `Y` appears
-   - after the last `I` dissapears
+`sl` [animates an ascii train](https://linuxcommandlibrary.com/man/sl) (shown below). `htty` can capture snapshots of this train (also shown below).
 
 ![animated ascii-art train](example.svg)
 
-First we saw what `sl` looks like when it's directly connected to the viewer's terminal.
-Then we used `htty` to run it with a headless terminal attached.
-`htty` was configured to only show us specific snapshots from that terminal.
+```
+htty -r 12 -c 50 --expect Y --snapshot --expect-absent I --snapshot -- sl
+```
+- run `sl` in a 12x50 headless terminal
+- capture two snapshots:
+   - after the first `Y` appears
+   - after the last `I` dissapears
 
 ### Python API
 
