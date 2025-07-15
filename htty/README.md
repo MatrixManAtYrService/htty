@@ -1,39 +1,17 @@
-# htty - Headless Terminal
+# htty - A fork of [ht](https://github.com/andyk/ht)
 
-A Python library for terminal automation using a headless terminal interface.
+`htty` controls processes that are attached to a headless terminal.
+It has both a command line interface, and a Python API.
 
-## Installation
+## Components
 
-```bash
-pip install htty
-```
+This repo includes two packages. It was necesssary to split them up because [Maturin refuses](https://github.com/PyO3/maturin/discussions/2683) to build packages with both rust binaries and python console scripts. `htty-core` got the rust binary, `htty` got the pyton API and the console script.
 
-This will automatically install `htty-core` as a dependency, which provides the underlying Rust binary.
+- **[htty](../README.md)** - You're viewing the README for this one. It contains the user-facing parts. It is packaged as a pure python source distribution.
+- **[htty-core](../htty-core/README.md)** - Contains the `ht` binary (built by [maturin](https://github.com/PyO3/maturin)) and a minimal python interface for running it.  It's packaged as an architecture-specific wheel. 
 
-## Quick Start
+`htty` depends on `htty-core`.
+It was necesssary to split them up because [Maturin objects](https://github.com/PyO3/maturin/blob/a50defe91c2c779d7f9aedb2ac0a788286f45ae8/src/build_context.rs#L1066) to building packages with both rust binaries and python console scripts.
+`htty-core` got the rust binary, `htty` got the pyton API and the console script.
 
-```python
-import htty
-
-# Run a command and capture output
-with htty.terminal_session("echo 'Hello World'") as proc:
-    snapshot = proc.snapshot()
-    print(snapshot.text)
-```
-
-## Command Line Tools
-
-After installation, you get the `htty` command for terminal automation tasks.
-
-## Documentation
-
-[Full documentation and examples coming soon]
-
-## Architecture
-
-This package depends on [`htty-core`](../htty-core/README.md), which contains the Rust binary with minimal Python bindings. This two-package approach works around maturin limitations while providing a clean user experience.
-
-## See also
-
-- **[htty-core](../htty-core/README.md)** - The underlying Rust binary package
-- **[Project README](../README.md)** - Overview of the entire project
+For more about the project in general check out [the README at the repo root](https://github.com/MatrixManAtYrService/htty) or [the docs](https://matrixmanatyrservice.github.io/htty/htty.html) instead.

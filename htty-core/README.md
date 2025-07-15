@@ -1,17 +1,15 @@
-# htty-core
+# htty - A fork of [ht](https://github.com/andyk/ht)
 
-This is a minimal distribution package containing the Rust `ht` binary with basic Python bindings. It exists solely as a dependency for the main [`htty`](../htty/README.md) package.
+`htty` controls processes that are attached to a headless terminal.
+It has both a command line interface, and a Python API.
 
-**You probably want [`htty`](../htty/README.md) instead** - it provides the full Python library and command-line tools.
+## Components
 
-## Why this exists
+This repo includes two packages. It was necesssary to split them up because [Maturin refuses](https://github.com/PyO3/maturin/discussions/2683) to building packages with both rust binaries and python console scripts. `htty-core` got the rust binary, `htty` got the pyton API and the console script.
 
-This package works around a maturin limitation: you can't include both console scripts and PyO3 bindings in the same project. So we split into two packages:
+- **[htty](../README.md)** - You're viewing the README for this one.  It contains both the `htty` command, and the `htty` python library.  It is packaged as a pure python source distribution.
+- **[htty-core](../htty-core/README.md)** You're viewing the README for this one.  It Contains the `ht` binary (built by [maturin](https://github.com/PyO3/maturin)) and a minimal python interface for running it.  It's packaged as an architecture-specific wheel.
 
-- **htty-core** (this package): Contains the Rust binary with minimal Python bindings
-- **htty**: Depends on htty-core and provides the full Python API and CLI tools
 
-## See also
 
-- **[htty](../htty/README.md)** - The main package you want to use
-- **[Project README](../README.md)** - Overview of the entire project
+For more about the project in general check out [the README at the repo root](https://github.com/MatrixManAtYrService/htty) or [the docs](https://matrixmanatyrservice.github.io/htty/htty.html) instead.
