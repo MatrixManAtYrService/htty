@@ -4,7 +4,7 @@ name = "htty"
 # import os
 # cog.out(f'version = "{os.environ["HTTY_VERSION"]}"')
 # ]]]
-version = "0.2.22"
+version = "0.2.23"
 # [[[end]]]
 description = "Headless Terminal - Python library for terminal automation"
 readme = "README.md"
@@ -37,9 +37,16 @@ dependencies = [
     # [[[cog
     # import os
     # version = os.environ["HTTY_VERSION"]
-    # cog.out(f'"htty-core=={version}",')
+    # 
+    # # Use local dependency for development/version-bump, PyPI for releases
+    # use_local = os.environ.get("HTTY_USE_LOCAL_CORE", "false").lower() == "true"
+    # 
+    # if use_local:
+    #     cog.out(f'"htty_core @ {{root:uri}}/../htty-core",')
+    # else:
+    #     cog.out(f'"htty-core=={version}",')
     # ]]]
-    "htty-core==0.2.22",
+    "htty_core @ {root:uri}/../htty-core",
     # [[[end]]]
     "ansi2html",
 ]

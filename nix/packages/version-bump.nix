@@ -132,41 +132,40 @@ let
     esac
 
     # Update version.nix using Cog
-    if [[ "$VERBOSE" == "true" ]]; then
-      echo "Running Cog on nix/lib/version.nix..."
-    fi
-
+    [[ "$VERBOSE" == "true" ]] && set -x
     ${pkgs.python3Packages.cogapp}/bin/cog -r nix/lib/version.nix
+    [[ "$VERBOSE" == "true" ]] && set +x
 
     echo "Bumping version: $CURRENT_VERSION -> $NEW_VERSION"
 
-    if [[ "$VERBOSE" == "true" ]]; then
-      echo "Updated nix/lib/version.nix"
-      echo "Running nix run .#codegen to propagate changes via Cog..."
-    fi
-
     # Run codegen to propagate the version changes via Cog
+    [[ "$VERBOSE" == "true" ]] && set -x
     if [[ "$VERBOSE" == "true" ]]; then
       ${pkgs.nix}/bin/nix run .#codegen -- -v
     else
       ${pkgs.nix}/bin/nix run .#codegen
     fi
 
-    # Update lock files to reflect new version
-    if [[ "$VERBOSE" == "true" ]]; then
-      echo "Updating Cargo.lock..."
-    fi
-
     # Update Cargo.lock by updating dependency info without building
     ${pkgs.cargo}/bin/cargo update --manifest-path htty-core/Cargo.toml --package htty_core
-
-    if [[ "$VERBOSE" == "true" ]]; then
-      echo "Updating uv.lock files..."
-    fi
+    [[ "$VERBOSE" == "true" ]] && set +x
 
     # Update uv.lock files by running lock command (doesn't require building)
+    [[ "$VERBOSE" == "true" ]] && set -x
+
     (cd htty-core && ${pkgs.uv}/bin/uv lock)
+
+    # For htty, use local dependency for uv lock to avoid PyPI dependency resolution
+    export HTTY_USE_LOCAL_CORE=true
+    ${pkgs.python3Packages.cogapp}/bin/cog -r htty/pyproject.toml
+
     (cd htty && ${pkgs.uv}/bin/uv lock)
+
+    # Restore PyPI dependency for final pyproject.toml
+    unset HTTY_USE_LOCAL_CORE
+    ${pkgs.python3Packages.cogapp}/bin/cog -r htty/pyproject.toml
+
+    [[ "$VERBOSE" == "true" ]] && set +x
 
     echo "✅ Version bump complete: $CURRENT_VERSION -> $NEW_VERSION"
     echo "💡 All files with version templates have been updated via Cog"
