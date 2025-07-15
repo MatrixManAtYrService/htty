@@ -4,7 +4,7 @@
 let
   # Determine if we're cross-compiling (check both manual targetSystem and pkgsCross)
   isCrossCompiling = (targetSystem != null && targetSystem != pkgs.stdenv.hostPlatform.system)
-                     || (pkgs.stdenv.hostPlatform != pkgs.stdenv.targetPlatform);
+    || (pkgs.stdenv.hostPlatform != pkgs.stdenv.targetPlatform);
 
   # Get overlays for Rust
   overlays = [ inputs.rust-overlay.overlays.default ];

@@ -31,6 +31,12 @@ def vim_path() -> Path:
 
 
 @pytest.fixture
+def vim_cmd(vim_path: Path) -> list[str]:
+    """Vim command with flags to prevent swap files."""
+    return [str(vim_path), "-n"]  # -n flag disables swap files
+
+
+@pytest.fixture
 def colored_hello_world_script() -> Generator[str, None, None]:
     # Use a fixed filename in /tmp so it can be run manually after tests
     script_path = "/tmp/htty_test_colored_hello_world.py"

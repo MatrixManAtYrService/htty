@@ -6,19 +6,22 @@ This module provides the minimal interface for running ht processes.
 
 import os
 import subprocess
+import sys
 import sysconfig
 from typing import Optional, Union
 
 # Python 3.11+ compatibility for StrEnum
-try:
+if sys.version_info >= (3, 11):
     from enum import StrEnum
-except ImportError:
+else:
     # Fallback for Python < 3.11
     from enum import Enum
 
     class StrEnum(str, Enum):
         """String enumeration for Python < 3.11 compatibility."""
+
         pass
+
 
 __all__ = [
     "HtEvent",

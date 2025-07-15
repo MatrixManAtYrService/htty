@@ -34,7 +34,13 @@ classifiers = [
     "Topic :: Terminals",
 ]
 dependencies = [
-    "htty_core @ {root:uri}/../htty-core",
+    # [[[cog
+    # import os
+    # version = os.environ["HTTY_VERSION"]
+    # cog.out(f'"htty-core=={version}",')
+    # ]]]
+    "htty-core==0.2.22",
+    # [[[end]]]
     "ansi2html",
 ]
 
