@@ -8,14 +8,15 @@ if sys.version_info >= (3, 11):
     # Python 3.11+ compatibility for StrEnum
     from enum import StrEnum
 else:
-    # Fallback for Python < 3.11
+    # Fallback for Python 3.10
     from enum import Enum
+
     class StrEnum(str, Enum):
         pass
 
+
 # Import constants for type alias annotations
 from .constants import DEFAULT_TERMINAL_COLS, DEFAULT_TERMINAL_ROWS
-
 
 # Type aliases for common parameters
 Command = Annotated[Union[str, list[str]], "run this command (as a subprocess of ht)"]
@@ -69,7 +70,8 @@ class HtEvent(StrEnum):
     - cols - current terminal width, number of columns
     - rows - current terminal height, number of rows
     - text - plain text snapshot as multi-line string, where each line represents a terminal row
-    - seq - a raw sequence of characters, which when printed to a blank terminal puts it in the same state as ht's virtual terminal
+    - seq - a raw sequence of characters, which when printed to a blank terminal puts it in the same state as
+      ht's virtual terminal
     """
 
     OUTPUT = "output"
@@ -78,7 +80,8 @@ class HtEvent(StrEnum):
 
     Event data is an object with the following fields:
 
-    - seq - a raw sequence of characters written to a terminal, potentially including control sequences (colors, cursor positioning, etc.)
+    - seq - a raw sequence of characters written to a terminal, potentially including control sequences
+      (colors, cursor positioning, etc.)
     """
 
     RESIZE = "resize"
@@ -112,7 +115,8 @@ class HtEvent(StrEnum):
     sh -c '{command}''
     ```
 
-    Sometimes, the PTY would shut down before all output was processed by ht, causing snapshots taken after exit to be incomplete.
+    Sometimes, the PTY would shut down before all output was processed by ht, causing snapshots taken
+    after exit to be incomplete.
     To fix this htty modified ht to run your like so:
 
     ```

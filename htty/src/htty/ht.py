@@ -12,14 +12,12 @@ from contextlib import contextmanager, suppress
 from typing import Annotated, Any, Optional, TypeAlias, Union
 
 from htty_core import (
+    Cols,
+    Command,
     HtArgs,
     HtEvent,
-    run as htty_core_run,
-    Command,
     Rows,
-    Cols,
-    DEFAULT_TERMINAL_COLS,
-    DEFAULT_TERMINAL_ROWS,
+    run as htty_core_run,
 )
 
 from .constants import (

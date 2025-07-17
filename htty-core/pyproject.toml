@@ -12,7 +12,7 @@ authors = [
     { name = "Matt Rixman", email = "MatrixManAtYrService@users.noreply.github.com" },
 ]
 license = { text = "MIT" }
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 keywords = ["terminal", "automation", "pty", "headless", "subprocess"]
 classifiers = [
     "Development Status :: 4 - Beta",

@@ -3,8 +3,7 @@
 [![CI](https://github.com/MatrixManAtYrService/htty/workflows/Test/badge.svg)](https://github.com/MatrixManAtYrService/htty/actions/workflows/tests.yml)
 [![PyPI htty](https://img.shields.io/pypi/v/htty.svg)](https://pypi.org/project/htty/)
 [![PyPI python versions](https://img.shields.io/pypi/pyversions/htty.svg)](https://pypi.org/project/htty/)
-)
-[[docs](https://img.shields.io/badge/docs)]
+[docs](https://img.shields.io/badge/docs)
 
 `htty` controls processes that are attached to a headless terminal.
 It has both a command line interface, and a Python API.
