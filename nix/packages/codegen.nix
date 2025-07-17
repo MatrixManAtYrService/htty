@@ -10,6 +10,7 @@ let
     inherit flake;
     files = [
       "htty-core/src/rust/constants.rs"
+      "htty-core/src/python/htty_core/constants.py"
       "htty/src/htty/constants.py"
     ];
   };

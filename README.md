@@ -1,7 +1,10 @@
 # htty - A fork of [ht](https://github.com/andyk/ht)
 
-![CI](https://github.com/MatrixManAtYrService/htty/workflows/Test/badge.svg)
-![PyPI](https://img.shields.io/pypi/v/htty.svg)](https://pypi.python.org/pypi/htty)
+[![CI](https://github.com/MatrixManAtYrService/htty/workflows/Test/badge.svg)](https://github.com/MatrixManAtYrService/htty/actions/workflows/tests.yml))
+[![PyPI htty](https://img.shields.io/pypi/v/htty.svg)](https://pypi.org/project/htty/))
+[![PyPI python versions](https://img.shields.io/pypi/pyversions/htty.svg)](https://pypi.org/project/htty/))
+)
+[[docs](./docs/htty.html)]
 
 `htty` controls processes that are attached to a headless terminal.
 It has both a command line interface, and a Python API.
@@ -133,7 +136,7 @@ rld
 ```
 
 Nix users can reference the CLI directly via the `#htty-cli` flake output:
-```   
+```
 $ nix run github:MatrixManAtYrService/htty#htty-cli -- -r 4 -c 4 --expect d --snapshot -- echo hello world
 hell
 o wo
@@ -170,4 +173,4 @@ rld
 This project uses a two-package distribution. `htty` depends on `htty-core`.
 
 - **[htty](htty/README.md)** - Install this. It provides `htty` both as a command-line tool and as a python library.  It's pure python, packaged as a source distribution.
-- **[htty-core](htty-core/README.md)** - Contains the `ht` binary (written in rust, modified by this fork, built by [maturin](https://github.com/PyO3/maturin)) and a minimal python interface for running it.  It's packaged as an architecture-specific wheel. 
+- **[htty-core](htty-core/README.md)** - Contains the `ht` binary (written in rust, modified by this fork, built by [maturin](https://github.com/PyO3/maturin)) and a minimal python interface for running it.  It's packaged as an architecture-specific wheel.

@@ -11,7 +11,16 @@ from collections.abc import Iterator
 from contextlib import contextmanager, suppress
 from typing import Annotated, Any, Optional, TypeAlias, Union
 
-from htty_core import HtArgs, HtEvent, run as htty_core_run
+from htty_core import (
+    HtArgs,
+    HtEvent,
+    run as htty_core_run,
+    Command,
+    Rows,
+    Cols,
+    DEFAULT_TERMINAL_COLS,
+    DEFAULT_TERMINAL_ROWS,
+)
 
 from .constants import (
     DEFAULT_EXIT_TIMEOUT,
@@ -19,8 +28,6 @@ from .constants import (
     DEFAULT_SLEEP_AFTER_KEYS,
     DEFAULT_SNAPSHOT_TIMEOUT,
     DEFAULT_SUBPROCESS_WAIT_TIMEOUT,
-    DEFAULT_TERMINAL_COLS,
-    DEFAULT_TERMINAL_ROWS,
     MAX_SNAPSHOT_RETRIES,
     SNAPSHOT_RETRY_TIMEOUT,
 )
@@ -40,15 +47,6 @@ __all__ = [
     "run",
 ]
 
-Command: TypeAlias = Annotated[Union[str, list[str]], "run this command (as a subprocess of ht)"]
-Rows: TypeAlias = Annotated[
-    Optional[int],
-    f"number of rows for the headless terminal (default: {DEFAULT_TERMINAL_ROWS})",
-]
-Cols: TypeAlias = Annotated[
-    Optional[int],
-    f"number of columns for the headless terminal (default: {DEFAULT_TERMINAL_COLS})",
-]
 NoExit: TypeAlias = Annotated[
     bool,
     (
