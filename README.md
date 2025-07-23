@@ -16,7 +16,7 @@ First, lets run `sl` normally.
 It will [animate an ascii train in our terminal](https://linuxcommandlibrary.com/man/sl).
 
 Then we'll use `htty` to run `sl`.
-`htty` accepts instructions about when it should dump snapshots of the headless terminal.
+It accepts instructions about when it should dump snapshots of the headless terminal.
 
 ![animated ascii-art train](example.svg)
 
