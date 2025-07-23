@@ -5,8 +5,8 @@
 [![PyPI python versions](https://img.shields.io/pypi/pyversions/htty.svg)](https://pypi.org/project/htty/)
 
 
-`htty` controls processes that are attached to a headless terminal.
-It has both a command line interface, and a Python API.
+`htty` attaches connects commands to a headless terminal.
+It has both a command line interface, and a Python API, which you can use to interact with that terminal.
 
 For details, see the [docs](https://matrixmanatyrservice.github.io/htty/htty.html).
 
