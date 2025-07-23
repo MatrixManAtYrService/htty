@@ -35,10 +35,10 @@ dependencies = [
     # [[[cog
     # import os
     # version = os.environ["HTTY_VERSION"]
-    # 
+    #
     # # Use local dependency for development/version-bump, PyPI for releases
     # use_local = os.environ.get("HTTY_USE_LOCAL_CORE", "false").lower() == "true"
-    # 
+    #
     # if use_local:
     #     cog.out(f'"htty_core @ {{root:uri}}/../htty-core",')
     # else:
@@ -47,6 +47,7 @@ dependencies = [
     "htty-core==0.2.25",
     # [[[end]]]
     "ansi2html",
+    "tenacity>=9.1.2",
 ]
 
 [project.urls]

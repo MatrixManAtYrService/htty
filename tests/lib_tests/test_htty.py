@@ -372,3 +372,45 @@ def test_expect_absent_timeout(colored_hello_world_script: str, test_logger: log
     ):
         proc.expect("hello")  # Wait for hello to appear
         proc.expect_absent("hello", timeout=1.0)  # It won't disappear until we press Enter
+
+
+@pytest.mark.htty
+def test_fg(test_logger: logging.Logger) -> None:
+    with (
+        terminal_session("sh -i", rows=4, cols=40, logger=test_logger) as sh,
+    ):
+        sh.send_keys(["echo foo && sleep 999", Press.ENTER])
+        sh.expect("^foo")
+        sh.send_keys(Press.CTRL_Z)
+        sh.expect("Stopped")
+
+        stopped = sh.snapshot()
+        sh.send_keys(["clear", Press.ENTER])
+        sh.expect_absent("foo")  # wait for clear to complete
+        sh.send_keys(["fg", Press.ENTER])
+        sh.expect("sleep 999")  # wait for resumed cmd to appear
+        sh.send_keys(Press.CTRL_C)
+        sh.expect("\\$ *$")  # wait for an empty prompt
+        terminated = sh.snapshot()
+
+    # should show that the echo ran but sleep stopped
+    """
+    foo
+    ^Z
+    [2]+  Stopped(SIGTSTP)        sleep 999
+    sh-5.2$
+    """
+    stopped_lines = stopped.text.splitlines()
+    assert "SIGTSTP" in stopped_lines[-2]
+    assert "foo" in stopped_lines[0]
+
+    # should show that sleep was resumend and terminated
+    """
+    sh-5.2$ fg
+    sleep 999
+    ^C
+    sh-5.2$
+    """
+
+    assert "foo" not in terminated.text.splitlines()[-1].strip()
+    assert "$" in terminated.text.splitlines()[-1].strip()

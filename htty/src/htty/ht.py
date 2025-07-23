@@ -19,6 +19,7 @@ from htty_core import (
     Rows,
     run as htty_core_run,
 )
+from tenacity import retry, retry_if_exception_type, stop_after_delay, wait_fixed
 
 from .constants import (
     DEFAULT_EXIT_TIMEOUT,
@@ -26,7 +27,6 @@ from .constants import (
     DEFAULT_SLEEP_AFTER_KEYS,
     DEFAULT_SNAPSHOT_TIMEOUT,
     DEFAULT_SUBPROCESS_WAIT_TIMEOUT,
-    MAX_SNAPSHOT_RETRIES,
     SNAPSHOT_RETRY_TIMEOUT,
 )
 from .html_utils import simple_ansi_to_html
@@ -35,6 +35,12 @@ from .proc import CmdProcess, HtProcess, ProcessController
 
 # Get default logger for this module
 default_logger = logging.getLogger(__name__)
+
+
+class SnapshotNotReady(Exception):
+    """Exception raised when snapshot is not yet available from the queue."""
+
+    pass
 
 
 __all__ = [
@@ -74,6 +80,17 @@ class HtWrapper:
     """
     A wrapper around a process started with the 'ht' tool that provides
     methods for interacting with the process and capturing its output.
+    """
+
+    ht: ProcessController
+    """
+    Helpers for interacting with the `ht` process (a child process of the python
+    that called `htty.run` or `htty.terminal_session`)
+    """
+
+    cmd: ProcessController
+    """
+    Helpers for interacting with the shell that wraps the caller's command (`ht`'s child process)
     """
 
     def __init__(
@@ -127,7 +144,8 @@ class HtWrapper:
                 self._ht_proc.terminate()
 
     def get_output(self) -> list[dict[str, Any]]:
-        """Return list of output events."""
+        """
+        Return list of [output](./htty-core/htty_core.html#HtEvent.OUTPUT) events."""
         return [event for event in self._output_events if event.get("type") == "output"]
 
     def add_output_event(self, event: dict[str, Any]) -> None:
@@ -154,9 +172,43 @@ class HtWrapper:
 
     def send_keys(self, keys: Union[KeyInput, list[KeyInput]]) -> None:
         """
-        Send keys to the terminal.
+        Send keys to the terminal.  Accepts strings, `Press` objects, and lists of strings or `Press` objects.
+        For keys that you can `Press`, see
+        [keys.py](https://github.com/MatrixManAtYrService/htty/blob/main/htty/src/htty/keys.py).
 
-        Since we use --wait-for-output, this is much more reliable than the original.
+        ```python
+        from htty import Press, terminal_session
+
+        with (
+            terminal_session("sh -i", rows=4, cols=40, logger=test_logger) as sh,
+        ):
+            sh.send_keys("echo foo && sleep 999")
+            sh.send_keys(Press.ENTER)
+            sh.expect("^foo")
+            sh.send_keys(Press.CTRL_Z)
+            sh.expect("Stopped")
+            sh.send_keys(["clear", Press.ENTER])
+        ```
+
+        These are sent to `ht` as events that look like this
+
+        ```json
+        {"type": "sendKeys", "keys": ["echo foo && sleep 999", "Enter"]}
+        ```
+
+        Notice that Press.ENTER is still sent as "Enter" under the hood.
+        `ht` checks to see if it corresponds with a known key and sends it letter-at-a-time if not.
+
+        Because of this, you might run into suprises if you want to type individual characters which happen to spell out
+        a known key such as "Enter" or "Backspace".
+
+        Work around this by breaking up the key names like so:
+
+        ```python
+        sh.send_keys(["Ente", "r"])
+        ```
+
+        If this behavior is problematic for you, consider submitting an issue.
         """
         key_strings = keys_to_strings(keys)
         message = json.dumps({"type": "sendKeys", "keys": key_strings})
@@ -204,14 +256,24 @@ class HtWrapper:
 
         time.sleep(DEFAULT_SLEEP_AFTER_KEYS)
 
-        # Process events until we find the snapshot
-        retry_count = 0
-        while retry_count < MAX_SNAPSHOT_RETRIES:
+        # Use tenacity to retry getting the snapshot
+        return self._wait_for_snapshot(timeout)
+
+    def _wait_for_snapshot(self, timeout: float) -> SnapshotResult:
+        """
+        Wait for snapshot response from the event queue with timeout and retries.
+        """
+
+        @retry(
+            stop=stop_after_delay(timeout),
+            wait=wait_fixed(SNAPSHOT_RETRY_TIMEOUT),
+            retry=retry_if_exception_type(SnapshotNotReady),
+        )
+        def _get_snapshot() -> SnapshotResult:
             try:
                 event = self._event_queue.get(block=True, timeout=SNAPSHOT_RETRY_TIMEOUT)
-            except queue.Empty:
-                retry_count += 1
-                continue
+            except queue.Empty as e:
+                raise SnapshotNotReady("No events available in queue") from e
 
             if event["type"] == "snapshot":
                 data = event["data"]
@@ -240,10 +302,21 @@ class HtWrapper:
                 # Put non-snapshot events back in queue for reader thread to handle
                 self._event_queue.put(event)
 
-        raise RuntimeError(
-            f"Failed to receive snapshot event after {MAX_SNAPSHOT_RETRIES} attempts. "
-            f"ht process may have exited or stopped responding."
-        )
+            # If we get here, we didn't find a snapshot, so retry
+            raise SnapshotNotReady(f"Received {event['type']} event, waiting for snapshot")
+
+        try:
+            return _get_snapshot()
+        except Exception as e:
+            # Handle both direct SnapshotNotReady and tenacity RetryError
+            from tenacity import RetryError
+
+            if isinstance(e, (SnapshotNotReady, RetryError)):
+                raise RuntimeError(
+                    f"Failed to receive snapshot event within {timeout} seconds. "
+                    f"ht process may have exited or stopped responding."
+                ) from e
+            raise
 
     def exit(self, timeout: float = DEFAULT_EXIT_TIMEOUT) -> int:
         """
@@ -400,7 +473,7 @@ class HtWrapper:
 
         # Compile the regex pattern
         try:
-            regex = re.compile(pattern)
+            regex = re.compile(pattern, re.MULTILINE)
         except re.error as e:
             raise ValueError(f"Invalid regex pattern '{pattern}': {e}") from e
 
@@ -473,7 +546,7 @@ class HtWrapper:
 
         # Compile the regex pattern
         try:
-            regex = re.compile(pattern)
+            regex = re.compile(pattern, re.MULTILINE)
         except re.error as e:
             raise ValueError(f"Invalid regex pattern '{pattern}': {e}") from e
 
@@ -531,7 +604,7 @@ def terminal_session(
     ```
 
     Its usage is otherwise the same as `run`.
-    It also returns a
+    Like `run` it returns a `HtWrapper`.
 
     """
 
@@ -590,15 +663,6 @@ def run(
             └── vim
     ```
 
-    For reasons that are documented in [htty-core](./htty-core/htty_core.html#run), the command that ht
-    runs is not:
-
-        sh -c '{command}'
-
-    Instead it's something like this:
-
-        sh -c '{command} ; exit_code=$? ; /path/to/ht wait-exit /path/to/tmp/ht_fifo_5432 ; exit $exit_code'
-
     This function invokes `ht` as a subprocess such that you end up with a process tree like the one shown
     above. It returns an `HtWrapper` object which can be used to interact with ht and its child process.
 
@@ -608,9 +672,24 @@ def run(
     proc = run("some command")
     # do stuff
     proc.exit()
-    ````
+    ```
+
     If you'd rather not risk having a bunch of `ht` processes lying around and wasting CPU cycles,
     consider using the `terminal_session` instead.
+
+    For reasons that are documented in
+    [htty-core](https://matrixmanatyrservice.github.io/htty/htty-core/htty_core.html#HtEvent.COMMAND_COMPLETED), the
+    command that ht runs is not:
+
+        sh -c '{command}'
+
+    Instead it's something like this:
+
+        sh -c '{command} ; exit_code=$? ; /path/to/ht wait-exit /path/to/tmp/ht_fifo_5432 ; exit $exit_code'
+
+    Because of this, it's possible to come up with command strings that cause sh to behave in problematic ways (for
+    example: `'`). For now the mitigation for this is: "don't do that." (If you'd like me to prioritize changing this
+    please leave a comment in https://github.com/MatrixManAtYrService/htty/issues/2)
     """
     # Use provided logger or fall back to default
     process_logger = logger or default_logger

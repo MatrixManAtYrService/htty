@@ -54,7 +54,7 @@
 
     # Referenced in: htty/src/htty/ht.py:47, used in snapshot() retry logic
     # Used as: Time between snapshot retry attempts when first attempt fails
-    snapshot_retry_timeout_ms = 500;
+    snapshot_retry_timeout_ms = 100;
 
     # Referenced in: htty-core/src/rust/session.rs:169 (as Duration::from_secs(5))
     # Used as: Maximum time to wait for subscription acknowledgment from ht process
