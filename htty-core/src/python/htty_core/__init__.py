@@ -1,7 +1,5 @@
 """
-htty-core: Core headless terminal functionality with bundled ht binary.
-
-This package provides the minimal interface for running ht processes.
+htty-core: A thin wrapper around a forked [ht](https://github.com/andyk/ht) binary for use with [htty](https://matrixmanatyrservice.github.io/htty/htty.html).
 """
 
 from .core import Cols, Command, HtArgs, HtEvent, Rows, find_ht_binary, run

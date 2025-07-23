@@ -26,7 +26,8 @@ To do this, it connects processes (like vim) to a [pseudoterminal interface](htt
 Most ANSI interpreters are involved with putting characters on a screen for humans to view directly, but this one is headless, so the text is stored internally for later reference.
 
 htty lets you control the underlying process and take snapshots of the headless terminal's contents at times when you expect it to be interesting.
-This can be handy for testing, like when you want to assert that the user's terminal looks a certain way, or for when you have a large amount of subprocess output and you want to show your user only a certain part of it.
+This can be handy for testing, like when you want to assert that the user's terminal looks a certain way, or for when you're expecting large subprocess output and you want to show your user only a certain part of it.
+(This can be especially useful if your user is an AI and you're being charged per-token.)
 
 It's a bit like a zoomed-out grep:
 Instead of finding lines of a file, it finds snapshots of a terminal session.
@@ -73,14 +74,14 @@ It's a good idea to `expect` something before you take a snapshot, otherwise the
 # Command Line Usage
 
 Unlike the `htty` python library, the `htty` command accepts all of its instructions before it starts.
-It will
+It will do the following:
 
-    1. run them all, printing snapshots along the way
-    2. terminate the child process
-    3. exit
+1. run all instruction, printing snapshots along the way
+2. terminate the child process
+3. exit
 
 If you're looking for something that doesn't clean the process up afterwards, consider one of these:
- - run `ht` instead of `htty` in a shell ([usage](https://github.com/andyk/ht?tab=readme-ov-file#usage))
+ - run  [ht](https://github.com/andyk/ht?tab=readme-ov-file#usage) of `htty`
  - use `htty` as a python library
  - other terminal emulator libraries such as [pyte](https://github.com/selectel/pyte)
 
