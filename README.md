@@ -12,9 +12,6 @@ For details, see the [docs](https://matrixmanatyrservice.github.io/htty/htty.htm
 
 ### Example
 
-You can tell `htty` to look for patterns and capture snapshots.
-It's a bit like `grep` except instead of line-at-a-time its screen-at-a-time.
-
 First, lets run `sl` normally.
 It will [animate an ascii train in our terminal](https://linuxcommandlibrary.com/man/sl).
 
