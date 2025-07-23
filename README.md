@@ -12,7 +12,15 @@ For details, see the [docs](https://matrixmanatyrservice.github.io/htty/htty.htm
 
 ### Example
 
-`sl` [animates an ascii train](https://linuxcommandlibrary.com/man/sl) (shown below). `htty` can capture snapshots of this train (also shown below).
+You can tell `htty` to look for patterns and capture snapshots.
+It's a bit like `grep` except instead of line-at-a-time its screen-at-a-time.
+
+First, lets run `sl` normally.
+It will [animate an ascii train in our terminal](https://linuxcommandlibrary.com/man/sl).
+
+Then we'll use `htty` to run `sl`.
+This will connect its output to a headless terminal.
+Also, we'll give `htty` some instructions about when it should dump snapshots of the headless terminal.
 
 ![animated ascii-art train](example.svg)
 
