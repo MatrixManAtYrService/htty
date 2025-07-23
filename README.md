@@ -115,8 +115,6 @@ hello world
 
 ## Usage
 
-For detailed usage information, see [the docs](https://matrixmanatyrservice.github.io/htty/htty.html).
-
 The `htty` package [on pypi](https://pypi.org/project/htty/) installs both the CLI and the Python API:
 ```
 $ pip install htty
