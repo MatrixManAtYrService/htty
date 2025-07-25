@@ -43,6 +43,13 @@ jobs:
           sccache: 'true'
           manylinux: ${{ contains(matrix.target, 'linux') && '2_17' || 'auto' }}
 
+      - name: Setup Python 3.10
+        # Skip cross-compiled aarch64 builds on x86_64 runners  
+        if: matrix.target != 'aarch64-unknown-linux-gnu'
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
       - name: Test wheel installation (native builds only)
         # Skip cross-compiled aarch64 builds on x86_64 runners
         if: matrix.target != 'aarch64-unknown-linux-gnu'
