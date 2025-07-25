@@ -40,7 +40,7 @@ wheels = [
 
 [[package]]
 name = "htty"
-version = "0.2.25"
+version = "0.2.26"
 source = { editable = "." }
 dependencies = [
     { name = "ansi2html" },
@@ -56,7 +56,7 @@ analysis = [
 [package.metadata]
 requires-dist = [
     { name = "ansi2html" },
-    { name = "htty-core", specifier = "==0.2.25" },
+    { name = "htty-core", directory = "../htty-core" },
     { name = "tenacity", specifier = ">=9.1.2" },
 ]
 
@@ -65,14 +65,13 @@ analysis = [{ name = "fawltydeps" }]
 
 [[package]]
 name = "htty-core"
-version = "0.2.25"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/a8/f713253000862ee6de9c76ad0cedd93b90819c40d504395a3acbe5ff1200/htty_core-0.2.25-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:a1a3c0699c6bc19ef52fcb0163b46396ebfb8cec0bbb9cf4014910d53f624d02", size = 1026436, upload-time = "2025-07-15T03:45:48.257Z" },
-    { url = "https://files.pythonhosted.org/packages/c1/1a/93d95667582269bb5040b9d3f6d7b4a0112e842b08922f5f9ffd92e1a86e/htty_core-0.2.25-py3-none-macosx_11_0_arm64.whl", hash = "sha256:70ad5c0f4ff06a16d9fa1ca52ff963724e8deefb9a56b814a2f06596eec264bb", size = 1004094, upload-time = "2025-07-15T03:45:49.452Z" },
-    { url = "https://files.pythonhosted.org/packages/37/31/9673a7490766034d1406ba127142404441799995ec6605e20a4158eec149/htty_core-0.2.25-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:fd3d6ffb2c901dc939de6564df071e039ca3c7c9d3f922e04e3f0495145db990", size = 1031419, upload-time = "2025-07-15T03:45:50.777Z" },
-    { url = "https://files.pythonhosted.org/packages/cc/ad/9c0706e57e9b2c579f01bc17197f82f0dea502730a75f879d8a45ba2ef7c/htty_core-0.2.25-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4266adcc594ff2a7030355ad148dc231ca8c79a14f1ca00fb379c75d636c4ff7", size = 1075465, upload-time = "2025-07-15T03:45:52Z" },
-]
+version = "0.2.26"
+source = { directory = "../htty-core" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+analysis = [{ name = "fawltydeps" }]
 
 [[package]]
 name = "importlib-metadata"
