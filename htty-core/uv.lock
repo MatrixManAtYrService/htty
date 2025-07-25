@@ -31,7 +31,7 @@ wheels = [
 
 [[package]]
 name = "htty-core"
-version = "0.2.26"
+version = "0.2.27"
 source = { editable = "." }
 
 [package.dev-dependencies]

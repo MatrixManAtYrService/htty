@@ -4,7 +4,7 @@ name = "htty"
 # import os
 # cog.out(f'version = "{os.environ["HTTY_VERSION"]}"')
 # ]]]
-version = "0.2.26"
+version = "0.2.27"
 # [[[end]]]
 description = "Headless Terminal - Python library for terminal automation"
 readme = "README.md"
@@ -44,7 +44,7 @@ dependencies = [
     # else:
     #     cog.out(f'"htty-core=={version}",')
     # ]]]
-    "htty-core==0.2.26",
+    "htty-core==0.2.27",
     # [[[end]]]
     "ansi2html",
     "tenacity>=9.1.2",
