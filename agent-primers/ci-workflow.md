@@ -30,7 +30,7 @@ The CI workflows trigger on:
 
 ### Workflow Jobs
 
-#### 1. **Lint and Analysis Job** (Implemented)
+#### 1. Lint and Analysis Job
 - **Runner**: `ubuntu-latest`
 - **Purpose**: Fast feedback on code quality
 - **File**: `.github/workflows/test.yml`
@@ -43,7 +43,7 @@ The CI workflows trigger on:
     - `nix run .#rust-analysis`
     - `nix run .#python-analysis`
 
-#### 2. **Test Job** (Implemented)
+#### 2. Test Job
 - **Runner**: `ubuntu-latest`
 - **Purpose**: Comprehensive testing across all environments
 - **File**: `.github/workflows/test.yml`
@@ -63,7 +63,7 @@ The CI workflows trigger on:
       - `pytest -m cli` (pytest-cli devshell)
   - Generate documentation: `nix run .#python-docs`
 
-#### 3. **Build htty-core Wheels Job** (Matrix Strategy) (Implemented)
+#### 3. Build htty-core Wheels Job (Matrix Strategy)
 - **Purpose**: Build htty-core wheels for multiple architectures
 - **File**: `.github/workflows/release.yml` (job: `build-htty-core-wheels`)
 - **Matrix Dimensions**:
@@ -97,7 +97,7 @@ The CI workflows trigger on:
   - Test wheel installation and functionality (native builds only)
   - Upload wheel as artifact
 
-#### 4. **Build htty Source Distribution Job** (Implemented)
+#### 4. Build htty Source Distribution Job
 - **Purpose**: Build htty pure Python source distribution
 - **File**: `.github/workflows/release.yml` (job: `build-htty-sdist`)
 - **Steps**:
@@ -106,7 +106,7 @@ The CI workflows trigger on:
   - Build htty source distribution: `nix build .#htty-sdist`
   - Upload source distribution as artifact
 
-#### 5. **Publish to PyPI Job** (Implemented)
+#### 5. Publish to PyPI Job
 - **Runner**: `ubuntu-latest`
 - **File**: `.github/workflows/release.yml` (job: `publish-to-pypi`)
 - **Dependencies**: Requires successful completion of both `build-htty-core-wheels` and `build-htty-sdist` jobs
@@ -123,27 +123,27 @@ The CI workflows trigger on:
 
 ### Cross-Compilation Implementation
 
-#### Current State (Implemented)
+#### Current State
 The `nix/packages/htty-core-wheel.nix` has been enhanced to support cross-compilation for all target architectures using maturin best practices.
 
 #### Implemented Features in `htty-core-wheel.nix`
 
-1. **Target system parameter** (✅ Implemented):
+1. Target system parameter:
    ```nix
    { inputs, pkgs, targetSystem ? null, ... }:
    ```
 
-2. **Cross-compilation detection** (✅ Implemented):
+2. Cross-compilation detection:
    - Detects when `targetSystem` is different from `pkgs.stdenv.hostPlatform.system`
    - Sets up appropriate Rust target mapping
    - Configures Rust toolchain with required targets
 
-3. **Maturin with Zig cross-compilation** (✅ Implemented):
-   - Uses `maturin build --zig` for cross-compilation (following maturin best practices)
+3. Maturin with Zig cross-compilation:
+   - Uses `maturin build --zig` for cross-compilation
    - Automatic cross-compilation toolchain via Zig
    - No manual GCC/linker configuration needed
 
-4. **Target platform mappings** (✅ Implemented):
+4. Target platform mappings:
    ```nix
    rustTargetMap = {
      "aarch64-linux" = "aarch64-unknown-linux-gnu";
@@ -153,16 +153,16 @@ The `nix/packages/htty-core-wheel.nix` has been enhanced to support cross-compil
    };
    ```
 
-### CI Infrastructure (Implemented)
+### CI Infrastructure
 
-#### Nix Setup and Caching (✅ Implemented)
+#### Nix Setup and Caching
 - **File**: `.github/actions/setup-nix/action.yml`
 - Uses `nixbuild/nix-quick-install-action@v30` for Nix installation
 - Uses `nix-community/cache-nix-action@v6` for Nix store caching
 - Cache key: `nix-store-${{ runner.os }}-${{ hashFiles('**/flake.lock') }}`
 - Garbage collection: Keep store under 8GB before caching
 
-#### Artifact Management (✅ Implemented)
+#### Artifact Management
 - Upload each htty-core wheel with platform-specific artifact names (`htty-core-wheel-{system}`)
 - Upload htty source distribution as separate artifact (`htty-sdist`)
 - Merge all artifacts in the publish job using `merge-multiple: true`
@@ -175,33 +175,33 @@ The `nix/packages/htty-core-wheel.nix` has been enhanced to support cross-compil
 - Both packages should maintain synchronized versions
 - CI should validate version consistency across packages
 
-#### Publishing Strategy (✅ Implemented)
+#### Publishing Strategy
 - **htty-core**: Publish architecture-specific wheels for each supported platform (4 wheels)
 - **htty**: Publish single source distribution that depends on htty-core (1 sdist)
-- Uses PyPI's trusted publishing with OIDC for secure, keyless publishing
+- Uses PyPI's trusted publishing with OIDC for keyless publishing
 - Supports dry-run mode for testing releases
 
-#### Supported Platforms (✅ Implemented)
-Following the same strategy as polars and other Rust-based Python packages:
+#### Supported Platforms
+Builds packages for these platforms:
 - **Linux**: x86_64, aarch64 (cross-compiled with maturin --zig)
 - **macOS**: x86_64 (Intel), aarch64 (Apple Silicon)
 - **Windows**: Not currently supported (can be added later)
 
-### Security and Best Practices (✅ Implemented)
+### Security and Best Practices
 
-#### Trusted Publishing (✅ Implemented)
+#### Trusted Publishing
 - Uses PyPI's trusted publishing instead of API tokens
 - Requires GitHub repository to be configured as trusted publisher in PyPI
 - Uses `id-token: write` permission for OIDC authentication
 - Environment: `release` for additional protection
 
-#### Artifact Verification (✅ Implemented)
+#### Artifact Verification
 - Verifies expected number of packages (4 wheels + 1 sdist)
 - Tests wheel installation on native platforms before publishing
 - Shows package details and sizes before publishing
 - Validates artifact completeness across matrix builds
 
-#### Secrets Management (✅ Implemented)
+#### Secrets Management
 - No API keys or tokens stored in repository
 - All authentication handled via OIDC trusted publishing
 - Cross-compilation tooling (Zig) installed via Nix packages
@@ -226,7 +226,7 @@ Following the same strategy as polars and other Rust-based Python packages:
 
 ### ✅ Completed Implementation
 
-All major phases of the CI workflow have been successfully implemented:
+All major phases of the CI workflow have been implemented:
 
 #### Phase 1: Cross-Compilation Setup (✅ Complete)
 - ✅ Enhanced `nix/packages/htty-core-wheel.nix` with cross-compilation support
@@ -246,7 +246,7 @@ All major phases of the CI workflow have been successfully implemented:
 - ✅ PyPI trusted publishing configuration
 - ✅ Dry-run support for testing releases
 
-### 🚧 Remaining Work
+### Remaining Work
 
 #### Phase 2: Version Management System (Future Enhancement)
 - Create `nix/lib/version.nix` as single source of truth for version information
@@ -259,14 +259,14 @@ All major phases of the CI workflow have been successfully implemented:
 - Additional platforms (Windows support)
 - Additional quality gates (coverage, benchmarks, security scanning)
 
-### 🎯 Current Status
+### Current Status
 
-The CI workflow is **fully functional and ready for production use**. It provides:
+The CI workflow is functional. It provides:
 
-- ✅ **Comprehensive testing** across all environments on every PR
-- ✅ **Multi-architecture builds** with cross-compilation
-- ✅ **Secure PyPI publishing** with trusted publishing
-- ✅ **Two-package distribution** (htty-core + htty)
-- ✅ **Dry-run capabilities** for testing releases
+- Testing across all environments on every PR
+- Multi-architecture builds with cross-compilation
+- PyPI publishing with trusted publishing
+- Two-package distribution (htty-core + htty)
+- Dry-run capabilities for testing releases
 
-The implementation follows maturin best practices and mirrors successful Rust-Python projects like polars, ensuring reliable and efficient CI/CD for the htty project.
+The implementation uses maturin for building Python wheels with Rust components.

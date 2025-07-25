@@ -2,13 +2,13 @@
 
 ## Overview
 
-The htty project uses [Cog](https://nedbatchelder.com/code/cog/) for automated code generation to maintain consistency across multiple languages (Rust, Python) and file formats (TOML, source files). This ensures that constants and version information stay synchronized throughout the codebase.
+The htty project uses [Cog](https://nedbatchelder.com/code/cog/) for automated code generation to maintain consistency across multiple languages (Rust, Python) and file formats (TOML, source files). Constants and version information are synchronized throughout the codebase.
 
 ## Architecture
 
 ### Central Source Files
 
-The code generation system is driven by two central Nix files that serve as the single source of truth:
+The code generation system is driven by two central Nix files:
 
 #### 1. `nix/lib/version.nix` - Version Management
 Contains all version-related information for the project:
@@ -30,9 +30,9 @@ Contains all version-related information for the project:
 }
 ```
 
-**Key Features:**
-- Single source of truth for all version information
-- Automatic git SHA integration
+Features:
+- Central version information
+- Git SHA integration
 - Python PEP 440 compatible prerelease format
 - Package-specific version formatting
 
@@ -61,10 +61,10 @@ Contains all shared constants used across the codebase:
 }
 ```
 
-**Key Features:**
-- Centralized configuration for the entire project
+Features:
+- Centralized configuration for the project
 - Language-agnostic constant definitions
-- Comprehensive documentation with usage references
+- Documentation with usage references
 - Consistent naming conventions
 
 ### Code Generation Process
@@ -91,7 +91,7 @@ Used to import constants from Nix environment variables:
 //[[[end]]]
 ```
 
-**Purpose**: Loads constants from environment variables into Cog variables for use in generation blocks.
+Purpose: Loads constants from environment variables into Cog variables for use in generation blocks.
 
 ### Code Generation Block
 
@@ -107,7 +107,7 @@ pub const DEFAULT_TERMINAL_ROWS: u16 = 30;
 //[[[end]]]
 ```
 
-**Purpose**: Generates the actual code that gets compiled/executed. The content between the block markers is automatically updated.
+Purpose: Generates the actual code that gets compiled/executed. The content between the block markers is automatically updated.
 
 ### Version Block (Simple)
 
@@ -122,32 +122,32 @@ version = "0.2.1-dev202507140024"
 # [[[end]]]
 ```
 
-**Purpose**: Inserts version strings into configuration files.
+Purpose: Inserts version strings into configuration files.
 
 ## File Types and Patterns
 
 ### Rust Files (`*.rs`)
 
-**Comments**: Use `//` and `/**/` comment styles
-**Pattern**: Import environment variables, then generate constants
-**Example files**:
+Comments: Use `//` and `/**/` comment styles
+Pattern: Import environment variables, then generate constants
+Example files:
 - `htty-core/src/rust/constants.rs` - Project constants
 - `htty-core/src/rust/cli.rs` - Version info for `--version` flag
 
 ### Python Files (`*.py`)
 
-**Comments**: Use `#` comment style
-**Pattern**: Similar to Rust but with Python syntax
-**Example files**:
+Comments: Use `#` comment style
+Pattern: Similar to Rust but with Python syntax
+Example files:
 - `htty/src/htty/constants.py` - Project constants
 - `htty/src/htty/cli.py` - Version info for `--version` flag
 - `htty/src/htty/__init__.py` - Module version
 
 ### Configuration Files (`*.toml`)
 
-**Comments**: Use `#` comment style
-**Pattern**: Simple version insertion, no complex logic
-**Example files**:
+Comments: Use `#` comment style
+Pattern: Simple version insertion, no complex logic
+Example files:
 - `htty-core/Cargo.toml` - Rust package version
 - `htty-core/pyproject.toml` - Python package version (htty-core)
 - `htty/pyproject.toml` - Python package version (htty)
@@ -189,7 +189,7 @@ The Nix build system automatically converts constants to environment variables:
 
 ### Constants Files
 
-**Rust**: `htty-core/src/rust/constants.rs`
+Rust: `htty-core/src/rust/constants.rs`
 ```rust
 // Terminal configuration
 pub const DEFAULT_TERMINAL_COLS: u16 = 60;
@@ -199,7 +199,7 @@ pub const DEFAULT_TERMINAL_ROWS: u16 = 30;
 pub const COORDINATION_DELAY: Duration = Duration::from_millis(200);
 ```
 
-**Python**: `htty/src/htty/constants.py`
+Python: `htty/src/htty/constants.py`
 ```python
 # Terminal configuration
 DEFAULT_TERMINAL_COLS = 60
@@ -211,14 +211,14 @@ COORDINATION_DELAY_MS = 200
 
 ### Version Files
 
-**Cargo.toml**:
+Cargo.toml:
 ```toml
 [package]
 name = "htty_core"
 version = "0.2.1-dev202507140024"
 ```
 
-**Python __init__.py**:
+Python __init__.py:
 ```python
 __version__ = "0.2.1-dev202507140024"
 ```
@@ -234,20 +234,20 @@ Generated content is between Cog markers:
 //[[[end]]]
 ```
 
-**Always edit the source Nix files instead:**
+Always edit the source Nix files instead:
 - Edit `nix/lib/version.nix` for version changes
 - Edit `nix/lib/constants.nix` for constant changes
 - Run `nix run .#codegen` to regenerate
 
 ### Avoiding Cog Conflicts
 
-**Problem**: Type annotations with nested brackets can confuse Cog:
+Problem: Type annotations with nested brackets can confuse Cog:
 ```python
 # This breaks Cog because it ends with ]]]
 actions: list[tuple[str, Optional[str]]] = []
 ```
 
-**Solution**: Use type aliases:
+Solution: Use type aliases:
 ```python
 # At module level
 ActionTuple: TypeAlias = tuple[str, Optional[str]]
@@ -258,12 +258,12 @@ actions: list[ActionTuple] = []
 
 ### Version Format Requirements
 
-**Python**: Must follow PEP 440
-- ✅ `0.2.1-dev202507140024` (prerelease with timestamp)
-- ✅ `0.2.1` (stable release)
+Python: Must follow PEP 440
+- `0.2.1-dev202507140024` (prerelease with timestamp)
+- `0.2.1` (stable release)
 - ❌ `0.2.1-2025-July-14-00-24` (month names not allowed)
 
-**Rust**: More flexible, but we use same format for consistency
+Rust: More flexible, but we use same format for consistency
 
 ### Environment Variable Access
 

@@ -1,10 +1,10 @@
 # Packaging Architecture
 
-## 🏗️ Build System Overview
+## Build System Overview
 
-This project uses a sophisticated Nix-based build system that creates a DAG (Directed Acyclic Graph) of packages. Each package serves different use cases, and users can build any package along this chain depending on their needs.
+This project uses a Nix-based build system that creates a DAG (Directed Acyclic Graph) of packages. Each package serves different use cases, and users can build any package along this chain depending on their needs.
 
-## 📊 Dependency Structure
+## Dependency Structure
 
 ### Nix Packages
 
@@ -68,7 +68,7 @@ alterations to `PYTHONPATH`).
 **pytest-full.nix**
 - Dependencies: `htty.nix`
 
-## 📦 Package & Devshell Reference
+## Package & Devshell Reference
 
 | Name | Type | Purpose | Command |
 |------|------|---------|--------|
@@ -86,7 +86,7 @@ alterations to `PYTHONPATH`).
 | `pytest-cli` | Devshell | Testing environment with CLI tools | `nix develop .#pytest-cli` |
 | `pytest-full` | Devshell | Testing environment with complete htty | `nix develop .#pytest-full` |
 
-## 🔄 Dependency Resolution
+## Dependency Resolution
 
 ### uv2nix Integration
 
@@ -122,16 +122,16 @@ pythonSet = (pkgs.callPackage pyproject-nix.build.packages {
 
 The Nix dependency system automatically rebuilds packages when inputs change:
 
-- **`htty-core/` changes** → `htty-core-wheel.nix` → `htty-core-env.nix`, `htty.nix` → `htty-cli.nix`
-- **`htty/` changes** → `htty.nix` → `htty-cli.nix`
-- **`htty/uv.lock` changes** → `htty.nix` → `htty-cli.nix`
+- `htty-core/` changes → `htty-core-wheel.nix` → `htty-core-env.nix`, `htty.nix` → `htty-cli.nix`
+- `htty/` changes → `htty.nix` → `htty-cli.nix`
+- `htty/uv.lock` changes → `htty.nix` → `htty-cli.nix`
 
-## 🎯 Design Principles
+## Design Principles
 
 ### 1. Separation of Concerns
-- **CLI-only packages** don't include Python environments (preventing Python pollution)
-- **Python packages** include CLI tools (giving Python users the full experience)
-- **Test environments** separate from production environments
+- CLI-only packages don't include Python environments (preventing Python pollution)
+- Python packages include CLI tools (giving Python users the full experience)
+- Test environments separate from production environments
 
 ### 2. Fresh Code Guarantee
 - Source changes trigger automatic rebuilds
@@ -148,15 +148,15 @@ The Nix dependency system automatically rebuilds packages when inputs change:
 - Nix ensures bit-for-bit reproducible builds
 - Same environment across all machines
 
-## 🔧 Adding New Packages
+## Adding New Packages
 
 To add a new package to the DAG:
 
-1. **Create package definition** in `nix/packages/new-package.nix`
-2. **Define inputs** from existing packages or source
-3. **Specify build process** using appropriate Nix builders
-4. **Add to blueprint** - Nix blueprint will discover it automatically
-5. **Test the package** with `nix build .#new-package`
+1. Create package definition in `nix/packages/new-package.nix`
+2. Define inputs from existing packages or source
+3. Specify build process using appropriate Nix builders
+4. Add to blueprint - Nix blueprint will discover it automatically
+5. Test the package with `nix build .#new-package`
 
 ### Example Package Template
 
@@ -194,4 +194,4 @@ pkgs.stdenv.mkDerivation {
 }
 ```
 
-This architecture ensures clean separation of concerns while providing maximum flexibility for different use cases.
+This architecture provides clean separation of concerns and flexibility for different use cases.

@@ -1,47 +1,47 @@
 # Testing Strategy: Environment-Aware Development
 
-This document explains htty's testing strategy, which maps tests to specific devshell environments based on their dependencies. This approach enables fast iteration on different layers of the stack while providing comprehensive integration testing.
+This document explains htty's testing strategy, which maps tests to specific devshell environments based on their dependencies. This approach enables fast iteration on different layers of the stack while providing integration testing.
 
 ## Architecture Overview
 
 htty is built in layers:
-1. **htty-core** - Maturin-built package (Rust binary + minimal Python bindings)
-2. **htty** - Pure Python wrapper that depends on htty-core and adds higher-level functionality
-3. **htty-cli** - Command-line tools without Python environment pollution
+1. htty-core - Maturin-built package (Rust binary + minimal Python bindings)
+2. htty - Pure Python wrapper that depends on htty-core and adds higher-level functionality
+3. htty-cli - Command-line tools without Python environment pollution
 
 ## Testing Environments & Pytest Marks
 
-We use pytest marks to explicitly declare what environment each test needs, then map those marks to specialized Nix devshells:
+Pytest marks declare what environment each test needs, mapped to specialized Nix devshells:
 
 ### `@pytest.mark.empty` → `pytest-empty` devshell
-- **Purpose**: Test nix functionality without any htty packages
-- **Contains**: Only pytest and test dependencies
-- **Use Cases**: External integration tests, nix package access verification
+- Purpose: Test nix functionality without any htty packages
+- Contains: Only pytest and test dependencies
+- Use Cases: External integration tests, nix package access verification
 
 ### `@pytest.mark.core` → `pytest-core` devshell
-- **Purpose**: Test htty-core in isolation (Rust + minimal Python bindings)
-- **Contains**: htty-core-env (maturin-built wheel)
-- **Use Cases**: Test Python/Rust bridge, basic terminal operations, htty_core module functionality
+- Purpose: Test htty-core in isolation (Rust + minimal Python bindings)
+- Contains: htty-core-env (maturin-built wheel)
+- Use Cases: Test Python/Rust bridge, basic terminal operations, htty_core module functionality
 
 ### `@pytest.mark.wheel` → `pytest-wheel` devshell
-- **Purpose**: Test htty-core-wheel package for Python wheel creation
-- **Contains**: htty-core-wheel package for building .whl files
-- **Use Cases**: Verify wheel packaging, metadata files, wheel file naming
+- Purpose: Test htty-core-wheel package for Python wheel creation
+- Contains: htty-core-wheel package for building .whl files
+- Use Cases: Verify wheel packaging, metadata files, wheel file naming
 
 ### `@pytest.mark.cli` → `pytest-cli` devshell
-- **Purpose**: Test CLI tools without Python environment pollution
-- **Contains**: htty-cli package (htty command only, no Python modules in PATH)
-- **Use Cases**: Command-line interface testing, verifying no Python environment leakage
+- Purpose: Test CLI tools without Python environment pollution
+- Contains: htty-cli package (htty command only, no Python modules in PATH)
+- Use Cases: Command-line interface testing, verifying no Python environment leakage
 
 ### `@pytest.mark.htty` → `pytest-htty` devshell
-- **Purpose**: Complete integration testing (htty-core + htty wrapper)
-- **Contains**: Complete htty environment for integration tests
-- **Use Cases**: End-to-end workflows, full integration tests, realistic user scenarios
+- Purpose: Complete integration testing (htty-core + htty wrapper)
+- Contains: Complete htty environment for integration tests
+- Use Cases: End-to-end workflows, full integration tests, realistic user scenarios
 
 ### `@pytest.mark.sdist` → `pytest-sdist` devshell
-- **Purpose**: Test htty-sdist package for source distribution creation
-- **Contains**: htty-sdist package for building .tar.gz files
-- **Use Cases**: Verify source distribution packaging, metadata files, build artifacts
+- Purpose: Test htty-sdist package for source distribution creation
+- Contains: htty-sdist package for building .tar.gz files
+- Use Cases: Verify source distribution packaging, metadata files, build artifacts
 
 ## Running Tests
 
@@ -85,7 +85,7 @@ nix develop .#pytest-htty --command pytest -vs -m htty
 
 ## Test Organization
 
-Tests are organized by **functionality** in folders, and **environmental dependencies** via marks:
+Tests are organized by functionality in folders, and environmental dependencies via marks:
 
 ```
 tests/
@@ -118,17 +118,17 @@ def test_complete_workflow():
 
 ## Key Benefits
 
-### 1. **Fast Iteration**
+### 1. Fast Iteration
 - Python changes don't trigger Rust rebuilds when using htty package
 - Rust changes only affect environments that need them
 - Each layer can be developed independently
 
-### 2. **Clear Separation**
+### 2. Clear Separation
 - Tests declare exactly what they need via marks
 - Matches the actual package architecture
 - Easy to debug issues at specific layers
 
-### 3. **Comprehensive Coverage**
+### 3. Comprehensive Coverage
 - Integration tests with real components (core, full)
 - CLI tests without Python environment pollution (cli)
 - External verification tests (empty)
@@ -200,9 +200,9 @@ nix develop .#pytest-htty --command pytest -vs -m htty
 ## Fresh Code Guarantee
 
 All environments automatically rebuild when source code changes:
-- **htty-core changes** → Rebuilds: htty-core-wheel → htty-core-env, htty → pytest-core, pytest-wheel, pytest-htty
-- **htty changes** → Rebuilds: htty → pytest-htty, pytest-sdist
-- **Test changes** → All pytest environments rebuild test dependencies
+- htty-core changes → Rebuilds: htty-core-wheel → htty-core-env, htty → pytest-core, pytest-wheel, pytest-htty
+- htty changes → Rebuilds: htty → pytest-htty, pytest-sdist
+- Test changes → All pytest environments rebuild test dependencies
 
 This ensures you always test fresh code and never encounter stale environment issues.
 
@@ -210,11 +210,11 @@ This ensures you always test fresh code and never encounter stale environment is
 
 ### Environment Isolation
 Each environment provides only what's declared:
-- **pytest-cli**: CLI tools but no Python modules in PYTHONPATH
-- **pytest-empty**: No htty packages at all
-- **pytest-core**: Only htty_core, no high-level htty wrapper
-- **pytest-wheel**: htty-core-wheel package for Python wheel testing
-- **pytest-sdist**: htty-sdist package for source distribution testing
-- **pytest-htty**: Complete environment with htty package
+- pytest-cli: CLI tools but no Python modules in PYTHONPATH
+- pytest-empty: No htty packages at all
+- pytest-core: Only htty_core, no high-level htty wrapper
+- pytest-wheel: htty-core-wheel package for Python wheel testing
+- pytest-sdist: htty-sdist package for source distribution testing
+- pytest-htty: Complete environment with htty package
 
 This isolation ensures tests can't accidentally depend on components they shouldn't have access to.
