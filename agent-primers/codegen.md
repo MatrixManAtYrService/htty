@@ -67,6 +67,18 @@ Features:
 - Documentation with usage references
 - Consistent naming conventions
 
+#### 3. `common/` - Tool Configuration Templates
+Contains shared configuration files for static analysis tools:
+
+- `common/ruff.toml` - Python linting/formatting configuration
+- `common/pyright.toml` - Python type checking configuration (excluding include paths)
+
+Features:
+- Single source of truth for tool configurations
+- Used across all Python projects (htty-core, htty, tests)
+- Injected via environment variables to avoid path dependencies
+- Project-specific settings (like include paths) remain in individual pyproject.toml files
+
 ### Code Generation Process
 
 The generation process is orchestrated by `nix/packages/codegen.nix`, which defines:
@@ -124,6 +136,27 @@ version = "0.2.1-dev202507140024"
 
 Purpose: Inserts version strings into configuration files.
 
+### Tool Configuration Block
+
+For inserting shared tool configurations from `common/` folder:
+
+```toml
+# [[[cog
+# # Insert common ruff configuration
+# import os
+# ruff_config = os.environ["HTTY_COMMON_RUFF_TOML"]
+#
+# cog.outl("[tool.ruff]")
+# for line in ruff_config.splitlines():
+#     cog.outl(line)
+# ]]]
+[tool.ruff]
+# ... contents from common/ruff.toml inserted here
+# [[[end]]]
+```
+
+Purpose: Maintains consistent tool configurations across all Python projects while allowing project-specific customizations.
+
 ## File Types and Patterns
 
 ### Rust Files (`*.rs`)
@@ -146,18 +179,25 @@ Example files:
 ### Configuration Files (`*.toml`)
 
 Comments: Use `#` comment style
-Pattern: Simple version insertion, no complex logic
+Pattern: Version insertion and tool configuration injection
 Example files:
 - `htty-core/Cargo.toml` - Rust package version
-- `htty-core/pyproject.toml` - Python package version (htty-core)
-- `htty/pyproject.toml` - Python package version (htty)
+- `htty-core/pyproject.toml` - Python package version + tool configs (htty-core)
+- `htty/pyproject.toml` - Python package version + tool configs (htty)
+- `tests/pyproject.toml` - Tool configs for test environment
+
+**Multi-Project Tool Configuration Pattern:**
+Each pyproject.toml file contains:
+1. Project-specific settings (hardcoded): `include = ["htty/src/htty"]`
+2. Generated common tool configs: `[tool.ruff]` and `[tool.pyright]` sections
+3. Generated version information: `version = "0.2.28"`
 
 ## Running Code Generation
 
 ### Manual Generation
 
 ```bash
-# Generate all files
+# Generate all files (constants, versions, tool configs, whitespace trimming)
 nix run .#codegen
 
 # Generate only constants
@@ -165,6 +205,9 @@ nix run .#generate-constants
 
 # Generate only versions
 nix run .#generate-version
+
+# Generate only tool configurations (ruff, pyright in pyproject.toml files)
+nix run .#generate-tool-configs
 ```
 
 ### Automatic Generation
@@ -176,14 +219,23 @@ Code generation runs automatically as part of:
 
 ## Environment Variable Mapping
 
-The Nix build system automatically converts constants to environment variables:
+The Nix build system automatically converts constants and config files to environment variables:
 
+### Constants and Versions
 | Nix Path | Environment Variable | Example Value |
 |----------|---------------------|---------------|
 | `version.version` | `HTTY_VERSION` | `"0.2.1-dev202507140024"` |
 | `version.versionInfo.htty` | `HTTY_VERSION_INFO_HTTY` | `"htty 0.2.1-dev202507140024 (a1b2c3d4)"` |
 | `terminal.default_cols` | `HTTY_DEFAULT_COLS` | `"60"` |
 | `timing.coordination_delay_ms` | `HTTY_COORDINATION_DELAY_MS` | `"200"` |
+
+### Tool Configuration Files
+| File Path | Environment Variable | Contains |
+|-----------|---------------------|----------|
+| `common/ruff.toml` | `HTTY_COMMON_RUFF_TOML` | Complete ruff configuration as TOML string |
+| `common/pyright.toml` | `HTTY_COMMON_PYRIGHT_TOML` | Common pyright settings as TOML string |
+
+File contents are injected via `builtins.readFile` at Nix evaluation time, eliminating any current working directory ambiguity.
 
 ## Generated File Structure
 
@@ -223,6 +275,20 @@ Python __init__.py:
 __version__ = "0.2.1-dev202507140024"
 ```
 
+### Tool Configuration Files
+
+pyproject.toml files contain both project-specific and generated sections:
+```toml
+[tool.ruff]
+# ... contents from common/ruff.toml inserted here
+
+[tool.pyright]
+include = ["htty/src/htty"]  # Project-specific (hardcoded)
+# ... contents from common/pyright.toml inserted here
+```
+
+Pattern: Each pyproject.toml has hardcoded project-specific settings (like include paths) followed by generated sections from common configuration files.
+
 ## Important Guidelines
 
 ### Do NOT Edit Generated Sections
@@ -234,10 +300,11 @@ Generated content is between Cog markers:
 //[[[end]]]
 ```
 
-Always edit the source Nix files instead:
+Always edit the source files instead:
 - Edit `nix/lib/version.nix` for version changes
 - Edit `nix/lib/constants.nix` for constant changes
-- Run `nix run .#codegen` to regenerate
+- Edit `common/ruff.toml` or `common/pyright.toml` for tool configuration changes
+- Run `nix run .#codegen` to regenerate all generated sections
 
 ### Avoiding Cog Conflicts
 

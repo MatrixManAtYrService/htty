@@ -67,6 +67,10 @@ pkgs: {
 
         export PATH="${pkgs.python3}/bin:${testDepsEnv}/bin:$PATH"
 
+        # Point pytest to the config file in tests/pyproject.toml since pytest.ini was moved there
+        # Use absolute path so pytest works from any directory
+        export PYTEST_ADDOPTS="-c $PWD/tests/pyproject.toml"
+
         ${extraShellHook}
       '';
     };

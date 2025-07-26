@@ -3,14 +3,51 @@ pkgs:
 let
   inherit (pkgs) lib;
 
-  # Create a check script that runs in current directory
+  # Create a check script that runs in current directory or multiple roots
   makeCheck = args:
     let
       name = args.name or (throw "makeCheck: 'name' is required");
       description = args.description or name;
       dependencies = args.dependencies or [ ];
-      command = args.command or (throw "makeCheck: 'command' is required");
-      verboseCommand = args.verboseCommand or command;
+
+      # Support for multiple roots
+      roots = args.roots or [ "." ]; # Default to current directory
+
+      # Support for function-based commands
+      commandArg = args.command or (throw "makeCheck: 'command' is required");
+      verboseCommandArg = args.verboseCommand or commandArg;
+
+      # Determine if commands are functions or strings
+      isCommandFunction = builtins.isFunction commandArg;
+      isVerboseCommandFunction = builtins.isFunction verboseCommandArg;
+
+      # Generate commands for each root
+      generateRootCommands = verbose:
+        let
+          cmdToUse = if verbose then verboseCommandArg else commandArg;
+          isFunction = if verbose then isVerboseCommandFunction else isCommandFunction;
+        in
+        if isFunction then
+        # Function-based: call function with each root
+          builtins.concatStringsSep "\n\n"
+            (map
+              (root: ''
+                echo "Running ${name} in root: ${root}"
+                cd "${root}"
+                ${cmdToUse { inherit root; }}
+                cd - > /dev/null
+              '')
+              roots)
+        else
+        # String-based: run same command in each root
+          builtins.concatStringsSep "\n\n" (map
+            (root: ''
+              echo "Running ${name} in root: ${root}"
+              cd "${root}"
+              ${cmdToUse}
+              cd - > /dev/null
+            '')
+            roots);
 
       # Basic environment setup
       environment = {
@@ -21,9 +58,13 @@ let
 
       # Resolve dependencies with basic tools
       resolvedDeps = dependencies ++ (with pkgs; [ coreutils ]);
+
+      # For backwards compatibility, expose the original command/verboseCommand
+      command = if isCommandFunction then "${name} (function-based)" else commandArg;
+      verboseCommand = if isVerboseCommandFunction then "${name} (function-based, verbose)" else verboseCommandArg;
     in
     {
-      inherit name description command verboseCommand;
+      inherit name description command verboseCommand roots;
       scriptContent = ''
         # Set up environment variables
         ${lib.concatStringsSep "\n" (lib.mapAttrsToList (k: v: "export ${k}=${lib.escapeShellArg (toString v)}") environment)}
@@ -31,12 +72,18 @@ let
         # Add dependencies to PATH
         export PATH="${lib.concatStringsSep ":" (map (dep: "${dep}/bin") resolvedDeps)}:$PATH"
 
+        # Store original directory
+        original_dir=$(pwd)
+
         # Run the appropriate command based on verbose mode
         if [ "$verbose" = "true" ]; then
-          ${verboseCommand}
+          ${generateRootCommands true}
         else
-          ${command}
+          ${generateRootCommands false}
         fi
+
+        # Return to original directory
+        cd "$original_dir"
       '';
     };
 
@@ -155,6 +202,7 @@ let
     name = "ruff-check";
     description = "Python linting with ruff (auto-fix enabled)";
     dependencies = with pkgs; [ ruff ];
+    roots = [ "htty-core" "htty" "tests" ];
     command = "ruff check --fix --unsafe-fixes";
     verboseCommand = "ruff check --fix --unsafe-fixes --verbose";
   };
@@ -163,6 +211,7 @@ let
     name = "ruff-format";
     description = "Python formatting with ruff";
     dependencies = with pkgs; [ ruff ];
+    roots = [ "htty-core" "htty" "tests" ];
     command = "ruff format";
     verboseCommand = "ruff format --verbose";
   };
@@ -221,8 +270,9 @@ let
     name = "pyright";
     description = "Python type checking with pyright";
     dependencies = with pkgs; [ pyright ];
-    command = "nix develop .#pytest-htty --command pyright";
-    verboseCommand = "nix develop .#pytest-htty --command pyright --verbose";
+    roots = [ "htty-core" "htty" "tests" ];
+    command = { root }: "nix develop .#pytest-htty --command pyright ${root}";
+    verboseCommand = { root }: "nix develop .#pytest-htty --command pyright ${root} --verbose";
   };
 
   rustClippyCheck = makeCheck {

@@ -19,4 +19,4 @@ fixable = ["ALL"]
 [lint.isort]
 known-first-party = ["htty"]
 force-single-line = false
-combine-as-imports = true 
+combine-as-imports = true

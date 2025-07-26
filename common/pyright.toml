@@ -1,0 +1,25 @@
+exclude = [
+    "**/__pycache__",
+    "**/.*",
+    "**/.git",
+    "**/node_modules",
+    "**/venv",
+    "**/result",
+    "**/target",
+    "**/dist",
+    "**/build",
+    "nix/**",
+    "py-envs/**",
+]
+typeCheckingMode = "strict"
+reportMissingTypeStubs = "error"
+reportUnknownMemberType = "error"
+reportUnknownArgumentType = "error"
+reportUnknownVariableType = "error"
+reportUnknownParameterType = "error"
+reportMissingParameterType = "error"
+reportMissingReturnType = "error"
+reportUntypedFunctionDecorator = "error"
+reportUntypedClassDecorator = "error"
+reportUntypedBaseClass = "error"
+reportUntypedNamedTuple = "error"

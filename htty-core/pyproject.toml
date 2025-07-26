@@ -53,3 +53,74 @@ profile = "release"
 include = [
     { path = "target/release/ht", format = "wheel" }
 ]
+
+# [[[cog
+# # Insert common ruff configuration
+# import os
+# ruff_config = os.environ["HTTY_COMMON_RUFF_TOML"]
+# 
+# cog.outl("[tool.ruff]")
+# for line in ruff_config.splitlines():
+#     cog.outl(line)
+# ]]]
+[tool.ruff]
+line-length = 120
+
+[lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort (import sorting)
+    "UP",  # pyupgrade
+    "B" ,  # flake8-bugbear
+    "SIM", # flake8-simplify
+]
+
+fixable = ["ALL"]
+
+[lint.per-file-ignores]
+"__init__.py" = ["E501"]
+
+[lint.isort]
+known-first-party = ["htty"]
+force-single-line = false
+combine-as-imports = true
+# [[[end]]]
+
+[tool.pyright]
+include = ["htty-core/src/python"]
+# [[[cog
+# # Insert common pyright configuration
+# import os
+# pyright_config = os.environ["HTTY_COMMON_PYRIGHT_TOML"]
+# 
+# for line in pyright_config.splitlines():
+#     cog.outl(line)
+# ]]]
+exclude = [
+    "**/__pycache__",
+    "**/.*",
+    "**/.git",
+    "**/node_modules",
+    "**/venv",
+    "**/result",
+    "**/target",
+    "**/dist",
+    "**/build",
+    "nix/**",
+    "py-envs/**",
+]
+typeCheckingMode = "strict"
+reportMissingTypeStubs = "error"
+reportUnknownMemberType = "error"
+reportUnknownArgumentType = "error"
+reportUnknownVariableType = "error"
+reportUnknownParameterType = "error"
+reportMissingParameterType = "error"
+reportMissingReturnType = "error"
+reportUntypedFunctionDecorator = "error"
+reportUntypedClassDecorator = "error"
+reportUntypedBaseClass = "error"
+reportUntypedNamedTuple = "error"
+# [[[end]]]
