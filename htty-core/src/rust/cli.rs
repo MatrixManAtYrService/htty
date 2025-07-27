@@ -48,7 +48,7 @@ fn parse_args(args: &[String]) -> Result<Cli> {
                 // import os
                 // cog.out(f'println!("{os.environ["HTTY_VERSION_INFO_HT"]}");')
                 // ]]]
-                println!("ht 0.2.29 (unknown)");
+                println!("ht 0.2.30 (unknown)");
                 // [[[end]]]
                 std::process::exit(0);
             }
