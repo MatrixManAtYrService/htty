@@ -9,4 +9,5 @@ pkgs: {
   checks = import ./checks.nix pkgs;
   constants = import ./constants.nix { inherit pkgs; };
   version = import ./version.nix { inherit pkgs; };
+  cogEnv = import ./cog-env.nix { inherit pkgs; };
 } // (import ./pytest-shell.nix { inherit inputs; }) pkgs

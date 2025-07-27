@@ -155,6 +155,9 @@ let
 
     (cd htty-core && ${pkgs.uv}/bin/uv lock)
 
+    # Set up Cog environment variables from shared source
+    ${pkgs.lib.concatStringsSep "\n" (pkgs.lib.mapAttrsToList (k: v: "export ${k}=${pkgs.lib.escapeShellArg (toString v)}") lib.cogEnv)}
+
     # For htty, use local dependency for uv lock to avoid PyPI dependency resolution
     export HTTY_USE_LOCAL_CORE=true
     export HTTY_VERSION="$NEW_VERSION"
