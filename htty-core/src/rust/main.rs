@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
     start_http_api(cli.listen, clients_tx.clone()).await?;
     let api = start_stdio_api(command_tx.clone(), clients_tx, cli.subscribe.unwrap_or_default());
     let pty = start_pty(cli.shell_command.clone(), &cli.size, input_rx, output_tx, pid_tx, exit_code_tx, command_tx.clone())?;
-    let session = build_session(&cli.size);
+    let session = build_session(&cli.size, cli.style_mode);
     run_event_loop(output_rx, input_tx, command_rx, clients_rx, pid_rx, exit_code_rx, session, api, &cli).await?;
     pty.await?
 }
@@ -68,8 +68,10 @@ async fn handle_waitexit(signal_file: PathBuf) -> Result<()> {
     Ok(())
 }
 
-fn build_session(size: &cli::Size) -> Session {
-    Session::new(size.cols(), size.rows())
+fn build_session(size: &cli::Size, style_mode: cli::StyleMode) -> Session {
+    let mut session = Session::new(size.cols(), size.rows());
+    session.set_style_mode(style_mode);
+    session
 }
 
 fn start_stdio_api(

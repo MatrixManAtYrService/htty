@@ -3,6 +3,25 @@ use anyhow::{bail, Result};
 use nix::pty;
 use std::{fmt::Display, net::SocketAddr, ops::Deref, str::FromStr, path::PathBuf, env};
 
+#[derive(Debug, Clone, Copy, Default)]
+pub enum StyleMode {
+    #[default]
+    Plain,
+    Styled,
+}
+
+impl FromStr for StyleMode {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "plain" => Ok(StyleMode::Plain),
+            "styled" => Ok(StyleMode::Styled),
+            _ => Err(format!("invalid style mode: {s}. Valid options: plain, styled")),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Cli {
     pub command: Option<Commands>,
@@ -10,6 +29,7 @@ pub struct Cli {
     pub shell_command: Vec<String>,
     pub listen: Option<SocketAddr>,
     pub subscribe: Option<Subscription>,
+    pub style_mode: StyleMode,
 }
 
 #[derive(Debug)]
@@ -33,6 +53,7 @@ fn parse_args(args: &[String]) -> Result<Cli> {
         shell_command: vec!["bash".to_string()],
         listen: None,
         subscribe: None,
+        style_mode: StyleMode::default(),
     };
 
     let mut i = 1; // Skip program name
@@ -74,6 +95,13 @@ fn parse_args(args: &[String]) -> Result<Cli> {
                 }
                 i += 1;
                 cli.subscribe = Some(args[i].parse().map_err(|e: String| anyhow::anyhow!(e))?);
+            }
+            "--style-mode" | "-s" => {
+                if i + 1 >= args.len() {
+                    bail!("--style-mode requires a value");
+                }
+                i += 1;
+                cli.style_mode = args[i].parse().map_err(|e: String| anyhow::anyhow!(e))?;
             }
             "wait-exit" => {
                 if i + 1 >= args.len() {
@@ -122,6 +150,7 @@ fn print_help(program_name: &str) {
     println!("      --size <COLSxROWS>        Terminal size [default: 120x40]");
     println!("  -l, --listen [<LISTEN_ADDR>]  Enable HTTP server");
     println!("      --subscribe <EVENTS>      Subscribe to events");
+    println!("  -s, --style-mode <MODE>       Style mode for snapshots [default: plain]");
     println!("  -h, --help                    Print help");
     println!("  -V, --version                 Print version");
 }

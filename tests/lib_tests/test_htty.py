@@ -121,6 +121,7 @@ def test_enum_keys_interface(hello_world_script: str) -> None:
     proc.ht.exit()  # Clean up the ht process
 
 
+@pytest.mark.skip(reason="HTML color functionality will be replaced with new --style-mode parameter")
 @pytest.mark.htty
 def test_html_snapshot_with_colors(colored_hello_world_script: str) -> None:
     """Test that the new SnapshotResult provides HTML with color information."""

@@ -51,10 +51,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/MatrixManAtYrService/ht"
-Documentation = "https://github.com/MatrixManAtYrService/ht"
-Repository = "https://github.com/MatrixManAtYrService/ht"
-Issues = "https://github.com/MatrixManAtYrService/ht/issues"
+Homepage = "https://github.com/MatrixManAtYrService/htty"
+Documentation = "https://MatrixManAtYrService.github.io/htty/htty.html"
+Repository = "https://github.com/MatrixManAtYrService/htty"
+Issues = "https://github.com/MatrixManAtYrService/htty/issues"
 
 [project.scripts]
 htty = "htty.cli:htty_sync"

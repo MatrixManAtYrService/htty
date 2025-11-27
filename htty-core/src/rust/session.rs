@@ -1,3 +1,4 @@
+use crate::cli::StyleMode;
 use anyhow::Result;
 use futures_util::{stream, Stream, StreamExt};
 use serde_json::json;
@@ -13,11 +14,12 @@ pub struct Session {
     start_time: Instant,
     last_event_time: Instant,
     pending_pid: Option<i32>,
+    style_mode: StyleMode,
 }
 
 #[derive(Clone, Debug)]
 pub enum Event {
-    Init(f64, usize, usize, String, String),
+    Init(f64, usize, usize, i32, String, String),
     Output(f64, String),
     Resize(f64, usize, usize),
     Snapshot(usize, usize, String, String),
@@ -46,6 +48,7 @@ impl Session {
             start_time: now,
             last_event_time: now,
             pending_pid: None,
+            style_mode: StyleMode::Plain,
         }
     }
 
@@ -107,7 +110,11 @@ impl Session {
     }
 
     pub fn cursor_key_app_mode(&self) -> bool {
-        self.vt.arrow_key_app_mode()
+        self.vt.cursor_key_app_mode()
+    }
+
+    pub fn set_style_mode(&mut self, style_mode: StyleMode) {
+        self.style_mode = style_mode;
     }
 
     pub fn subscribe(&self) -> Subscription {
@@ -117,6 +124,7 @@ impl Session {
             self.elapsed_time(),
             cols,
             rows,
+            self.pending_pid.unwrap_or(0),
             self.vt.dump(),
             self.text_view(),
         );
@@ -148,11 +156,12 @@ impl Session {
 impl Event {
     pub fn to_json(&self) -> serde_json::Value {
         match self {
-            Event::Init(_time, cols, rows, seq, text) => json!({
+            Event::Init(_time, cols, rows, pid, seq, text) => json!({
                 "type": "init",
                 "data": json!({
                     "cols": cols,
                     "rows": rows,
+                    "pid": pid,
                     "seq": seq,
                     "text": text,
                 })
@@ -215,7 +224,7 @@ impl Event {
 }
 
 fn build_vt(cols: usize, rows: usize) -> avt::Vt {
-    avt::Vt::builder().size(cols, rows).resizable(true).build()
+    avt::Vt::builder().size(cols, rows).build()
 }
 
 fn resize_vt(vt: &mut avt::Vt, cols: usize, rows: usize) {

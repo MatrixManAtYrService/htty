@@ -28,10 +28,10 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/MatrixManAtYrService/ht"
-Documentation = "https://github.com/MatrixManAtYrService/ht"
-Repository = "https://github.com/MatrixManAtYrService/ht"
-Issues = "https://github.com/MatrixManAtYrService/ht/issues"
+Homepage = "https://github.com/MatrixManAtYrService/htty"
+Documentation = "https://MatrixManAtYrService.github.io/htty/htty.html"
+Repository = "https://github.com/MatrixManAtYrService/htty"
+Issues = "https://github.com/MatrixManAtYrService/htty/issues"
 
 [build-system]
 requires = ["maturin>=1.3.2"]
