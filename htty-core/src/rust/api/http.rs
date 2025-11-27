@@ -86,7 +86,7 @@ async fn alis_message(
     use session::Event::*;
 
     match event {
-        Ok(Init(time, cols, rows, _pid, seq, _text)) => Some(Ok(json_message(json!({
+        Ok(Init(time, cols, rows, _pid, seq, _text, _)) => Some(Ok(json_message(json!({
             "time": time,
             "cols": cols,
             "rows": rows,
@@ -101,7 +101,7 @@ async fn alis_message(
             format!("{cols}x{rows}")
         ])))),
 
-        Ok(Snapshot(_, _, _, _)) => None,
+        Ok(Snapshot(_, _, _, _, _)) => None,
 
         Ok(Pid(_, _)) => None,
 
@@ -169,7 +169,7 @@ async fn event_stream_message(
         Ok(e @ Init(..)) if sub.init => Some(Ok(json_message(e.to_json()))),
         Ok(e @ Output(_, _)) if sub.output => Some(Ok(json_message(e.to_json()))),
         Ok(e @ Resize(_, _, _)) if sub.resize => Some(Ok(json_message(e.to_json()))),
-        Ok(e @ Snapshot(_, _, _, _)) if sub.snapshot => Some(Ok(json_message(e.to_json()))),
+        Ok(e @ Snapshot(_, _, _, _, _)) if sub.snapshot => Some(Ok(json_message(e.to_json()))),
         Ok(e @ Pid(_, _)) if sub.pid => Some(Ok(json_message(e.to_json()))),
         Ok(e @ ExitCode(_, _)) if sub.exit_code => Some(Ok(json_message(e.to_json()))),
         Ok(e @ Debug(_, _)) if sub.debug => Some(Ok(json_message(e.to_json()))),

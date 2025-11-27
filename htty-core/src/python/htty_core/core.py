@@ -18,6 +18,14 @@ else:
 # Import constants for type alias annotations
 from .constants import DEFAULT_TERMINAL_COLS, DEFAULT_TERMINAL_ROWS
 
+
+class StyleMode(StrEnum):
+    """Style mode for terminal output."""
+
+    PLAIN = "plain"
+    STYLED = "styled"
+
+
 # Type aliases for common parameters
 Command = Annotated[Union[str, list[str]], "run this command (as a subprocess of ht)"]
 Rows = Annotated[
@@ -146,11 +154,13 @@ class HtArgs:
         subscribes: Optional[list[HtEvent]] = None,
         rows: Rows = None,
         cols: Cols = None,
+        style_mode: Optional[StyleMode] = None,
     ) -> None:
         self.command = command
         self.subscribes = subscribes or []
         self.rows = rows
         self.cols = cols
+        self.style_mode = style_mode
 
     def get_command(self, ht_binary: Optional[str] = None) -> list[str]:
         """Build the command line arguments for running ht.
@@ -174,6 +184,10 @@ class HtArgs:
         # Add size arguments if specified
         if self.rows is not None and self.cols is not None:
             cmd_args.extend(["--size", f"{self.cols}x{self.rows}"])
+
+        # Add style mode if specified
+        if self.style_mode is not None:
+            cmd_args.extend(["--style-mode", self.style_mode])
 
         # Add separator and the command to run
         cmd_args.append("--")

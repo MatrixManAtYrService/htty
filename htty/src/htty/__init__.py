@@ -144,6 +144,7 @@ from htty.ht import (
     terminal_session,
 )
 from htty.keys import Press
+from htty_core import StyleMode
 
 # [[[cog
 # import os
@@ -158,6 +159,7 @@ __all__ = [
     "HtWrapper",
     "ProcessController",
     "SnapshotResult",
+    "StyleMode",
     "Press",
     "keys",
     "__version__",

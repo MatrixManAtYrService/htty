@@ -1,8 +1,11 @@
+use crate::cli::StyleMode;
+
 #[derive(Debug)]
 pub enum Command {
     Input(Vec<InputSeq>),
     Snapshot,
     Resize(usize, usize),
+    SetStyleMode(StyleMode),
     Exit,
     Debug(String),
     Completed(std::path::PathBuf),

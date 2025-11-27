@@ -232,6 +232,10 @@ async fn run_event_loop(
                         session.resize(cols, rows);
                     }
 
+                    Some(Command::SetStyleMode(style_mode)) => {
+                        session.set_style_mode(style_mode);
+                    }
+
                     Some(Command::Debug(message)) => {
                         // Emit all debug messages as debug events
                         session.emit_debug_event(&message);

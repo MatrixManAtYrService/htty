@@ -17,6 +17,7 @@ from htty_core import (
     HtArgs,
     HtEvent,
     Rows,
+    StyleMode,
     run as htty_core_run,
 )
 from tenacity import retry, retry_if_exception_type, stop_after_delay, wait_fixed
@@ -645,6 +646,7 @@ def run(
     no_exit: NoExit = True,
     logger: Logger = None,
     extra_subscribes: ExtraSubscribes = None,
+    style_mode: Optional[StyleMode] = None,
 ) -> HtWrapper:
     """
     As a user of the htty python library, your code will run in the python process at the root of this
@@ -724,6 +726,7 @@ def run(
         subscribes=base_subscribes,
         rows=rows,
         cols=cols,
+        style_mode=style_mode,
     )
 
     # Log the exact command that would be run

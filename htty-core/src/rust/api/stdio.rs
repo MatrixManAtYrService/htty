@@ -1,4 +1,5 @@
 use super::Subscription;
+use crate::cli::StyleMode;
 use crate::command::{self, Command, InputSeq};
 use crate::session;
 use anyhow::Result;
@@ -22,6 +23,11 @@ struct SendKeysArgs {
 struct ResizeArgs {
     cols: usize,
     rows: usize,
+}
+
+#[derive(Debug, Deserialize)]
+struct SetStyleModeArgs {
+    mode: String,
 }
 
 pub async fn start(
@@ -88,7 +94,7 @@ pub async fn start(
                         println!("{}", e.to_json());
                     }
 
-                    Some(Ok(e @ Snapshot(_, _, _, _))) if sub.snapshot => {
+                    Some(Ok(e @ Snapshot(_, _, _, _, _))) if sub.snapshot => {
                         println!("{}", e.to_json());
                     }
 
@@ -152,6 +158,13 @@ fn build_command(value: serde_json::Value) -> Result<Command, String> {
         }
 
         Some("takeSnapshot") => Ok(Command::Snapshot),
+
+        Some("setStyleMode") => {
+            let args: SetStyleModeArgs = args_from_json_value(value)?;
+            let style_mode = args.mode.parse::<StyleMode>()
+                .map_err(|e| format!("invalid style mode: {}", e))?;
+            Ok(Command::SetStyleMode(style_mode))
+        }
 
         Some("exit") => Ok(Command::Exit),
 
@@ -323,6 +336,7 @@ fn parse_key(key: String) -> InputSeq {
 #[cfg(test)]
 mod test {
     use super::{cursor_key, parse_line, standard_key, Command};
+    use crate::cli::StyleMode;
     use crate::command::InputSeq;
 
     #[test]
@@ -523,6 +537,21 @@ mod test {
     fn parse_take_snapshot() {
         let command = parse_line(r#"{ "type": "takeSnapshot" }"#).unwrap();
         assert!(matches!(command, Command::Snapshot));
+    }
+
+    #[test]
+    fn parse_set_style_mode() {
+        let command = parse_line(r#"{ "type": "setStyleMode", "mode": "styled" }"#).unwrap();
+        assert!(matches!(command, Command::SetStyleMode(StyleMode::Styled)));
+
+        let command = parse_line(r#"{ "type": "setStyleMode", "mode": "plain" }"#).unwrap();
+        assert!(matches!(command, Command::SetStyleMode(StyleMode::Plain)));
+    }
+
+    #[test]
+    fn parse_set_style_mode_invalid() {
+        parse_line(r#"{ "type": "setStyleMode", "mode": "invalid" }"#).expect_err("should fail");
+        parse_line(r#"{ "type": "setStyleMode" }"#).expect_err("should fail");
     }
 
     #[test]
